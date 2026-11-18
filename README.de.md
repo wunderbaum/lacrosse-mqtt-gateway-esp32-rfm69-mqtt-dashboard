@@ -44,7 +44,7 @@ git tag v0.2.0
 git push origin v0.2.0
 ```
 
-GitHub Actions erstellt die Firmware für alle drei Boards, veröffentlicht das Release und aktualisiert den Online-Flasher. Tags mit dem Präfix `v0.` werden als Vorabversionen markiert. Eine neue USB-Installation löscht vorhandene Flash-Daten. Sichern Sie benötigte Einstellungen vorher.
+GitHub Actions erstellt die Firmware für alle drei Boards, veröffentlicht das Release und aktualisiert den Online-Flasher. Tags mit dem Präfix `v0.` werden als Vorabversionen markiert. Der Online-Flasher fragt, ob vorhandene Flash-Daten gelöscht werden sollen. Sichern Sie benötigte Einstellungen vorher.
 
 ## Einrichtung
 

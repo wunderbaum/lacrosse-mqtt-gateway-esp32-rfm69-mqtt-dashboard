@@ -43,7 +43,7 @@ git tag v0.2.0
 git push origin v0.2.0
 ```
 
-GitHub Actions builds all three board targets, creates the release, and deploys the latest firmware to the online flasher. Tags beginning with `v0.` are marked as prereleases. A new USB install erases existing flash data; back up any settings you need first.
+GitHub Actions builds all three board targets, creates the release, and deploys the latest firmware to the online flasher. Tags beginning with `v0.` are marked as prereleases. The online flasher prompts whether to erase existing flash data; back up any settings you need first.
 
 ## Setup
 
