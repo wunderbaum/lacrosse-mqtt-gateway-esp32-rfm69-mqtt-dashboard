@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Firmware version shown by the flasher
+        required: true
+        type: string
+        default: v0.1.0
 
 permissions:
   contents: read
@@ -69,13 +76,16 @@ jobs:
           merge-multiple: true
 
       - name: Prepare release assets and web flasher
+        env:
+          RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
         run: |
           python scripts/package_release.py \
-            --version "${GITHUB_REF_NAME}" \
+            --version "${RELEASE_VERSION}" \
             --artifacts release-artifacts \
             --site site
 
       - name: Publish GitHub release
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           name: LaCrosse MQTT Gateway ${{ github.ref_name }}
