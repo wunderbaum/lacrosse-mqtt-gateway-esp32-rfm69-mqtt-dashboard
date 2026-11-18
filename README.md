@@ -1,5 +1,7 @@
 # LaCrosse MQTT Gateway — ESP32 edition
 
+[English](README.md) | [Deutsch](README.de.md)
+
 ESP32 firmware for receiving 868 MHz LaCrosse-compatible temperature/humidity sensors with an RFM69CW, publishing readings to MQTT, and serving a local dashboard. This is an initial hardware-testing implementation; validate the RF profile against your exact Technoline model.
 
 ## Hardware and board targets
