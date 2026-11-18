@@ -29,7 +29,22 @@ pio run -e esp32dev -t upload
 pio device monitor
 ```
 
-Die Weboberfläche ist in der Firmware eingebettet; ein Dateisystem muss nicht separat hochgeladen werden. Flashen Sie diese OTA-fähige Firmware zunächst per USB. Spätere Versionen können über die Weboberfläche installiert werden.
+Die Weboberfläche ist in der Firmware eingebettet; ein Dateisystem muss nicht separat hochgeladen werden.
+
+Für die Erstinstallation können Sie den [Online-USB-Flasher](https://wunderbaum.github.io/lacrosse-mqtt-gateway-esp32-rfm69-mqtt-dashboard/) oder PlatformIO verwenden. Der Online-Flasher benötigt einen Web-Serial-kompatiblen Browser, ein USB-Datenkabel und eine HTTPS-Verbindung.
+
+## Releases und Online-Flasher
+
+Unter [GitHub Releases](https://github.com/wunderbaum/lacrosse-mqtt-gateway-esp32-rfm69-mqtt-dashboard/releases) finden Sie die kompilierten Firmware-Dateien. Jedes Release enthält eine OTA-Anwendungsdatei (`*-ota.bin`) für die Seite **Firmware update** des Gateways sowie Bootloader-, Partitionstabellen- und `boot_app0`-Dateien für das USB-Flashen.
+
+Ein Release wird durch einen Versions-Tag erstellt, zum Beispiel:
+
+```sh
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+GitHub Actions erstellt die Firmware für alle drei Boards, veröffentlicht das Release und aktualisiert den Online-Flasher. Tags mit dem Präfix `v0.` werden als Vorabversionen markiert. Eine neue USB-Installation löscht vorhandene Flash-Daten. Sichern Sie benötigte Einstellungen vorher.
 
 ## Einrichtung
 
@@ -38,7 +53,7 @@ Die Weboberfläche ist in der Firmware eingebettet; ein Dateisystem muss nicht s
 3. Tragen Sie unter **Network / MQTT** die WLAN- und MQTT-Broker-Daten ein. Passen Sie bei Bedarf auch die RFM69-GPIOs an und speichern Sie die Einstellungen. Das Gateway startet anschließend neu.
 4. Öffnen Sie die LAN-IP-Adresse des Gateways und benennen Sie unter **Sensor setup** erkannte Sensoren und aktivieren oder deaktivieren Sie deren MQTT-Veröffentlichung.
 
-Ändern Sie vor dem Einsatz das Passwort des Setup-Access-Points in `src/main.cpp`. Legen Sie unter **Network / MQTT** ein OTA-Passwort mit mindestens 8 Zeichen fest. Öffnen Sie anschließend **Firmware update** und laden Sie die passende Datei `.pio/build/<environment>/firmware.bin` hoch. Für Firmware-Uploads ist dieses Passwort erforderlich; nach einem erfolgreichen Update startet das Gateway neu.
+Ändern Sie vor dem Einsatz das Passwort des Setup-Access-Points in `src/main.cpp`. Legen Sie unter **Network / MQTT** ein OTA-Passwort mit mindestens 8 Zeichen fest. Öffnen Sie anschließend **Firmware update** und laden Sie die passende Datei `.pio/build/<environment>/firmware.bin` oder das `*-ota.bin`-Release-Asset hoch. Für Firmware-Uploads ist dieses Passwort erforderlich; nach einem erfolgreichen Update startet das Gateway neu.
 
 Der übrige Teil der lokalen Weboberfläche ist nicht authentifiziert. Die OTA-Passwortprüfung verwendet HTTP Basic über unverschlüsseltes HTTP; das Passwort ist daher bei der Übertragung nicht verschlüsselt. Verwenden Sie die Oberfläche nur in einem vertrauenswürdigen Netzwerk und machen Sie sie nicht direkt aus dem Internet erreichbar.
 

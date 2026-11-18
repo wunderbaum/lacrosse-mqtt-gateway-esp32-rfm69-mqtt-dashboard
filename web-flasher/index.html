@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <title>LaCrosse MQTT Gateway — Web Flasher</title>
+  <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+  <style>
+    :root{color-scheme:dark;font:16px/1.6 system-ui,sans-serif;background:#111827;color:#f3f4f6}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:2rem}
+    main{width:min(100%,680px);padding:2rem;border:1px solid #374151;border-radius:20px;background:#1f2937;box-shadow:0 24px 70px #0005}
+    h1{margin:.2rem 0;font-size:clamp(1.7rem,5vw,2.4rem);line-height:1.15}
+    p{color:#d1d5db}
+    .eyebrow{color:#6ee7b7;text-transform:uppercase;letter-spacing:.12em;font-size:.8rem;font-weight:700}
+    .notice{padding:1rem;border-radius:12px;background:#111827;color:#d1d5db}
+    .actions{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin:1.5rem 0}
+    esp-web-install-button{--esp-tools-button-color:#34d399;--esp-tools-button-text-color:#06251c;--esp-tools-button-border-radius:10px}
+    esp-web-install-button button{border:0;border-radius:10px;padding:.85rem 1.2rem;background:#34d399;color:#06251c;font:inherit;font-weight:800;cursor:pointer}
+    a{color:#6ee7b7}
+    footer{margin-top:2rem;border-top:1px solid #374151;padding-top:1rem;color:#9ca3af;font-size:.9rem}
+    code{color:#a7f3d0}
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">ESP32 · RFM69 · MQTT</p>
+    <h1>LaCrosse MQTT Gateway</h1>
+    <p>Install the firmware directly over USB, or use the gateway’s built-in OTA updater after setup.</p>
+    <div class="notice">
+      <strong>Before you begin</strong>
+      <ul>
+        <li>Use Chrome, Edge, or another browser that supports Web Serial.</li>
+        <li>Connect the ESP32 with a USB data cable and close any serial monitor.</li>
+        <li>Choose the correct ESP32 board when prompted. A new install erases existing flash data.</li>
+      </ul>
+    </div>
+    <div class="actions">
+      <esp-web-install-button manifest="manifest.json">
+        <button slot="activate">Connect and install</button>
+        <span slot="unsupported">Use a Web Serial-compatible browser over HTTPS to flash this device.</span>
+      </esp-web-install-button>
+      <a href="https://github.com/wunderbaum/lacrosse-mqtt-gateway-esp32-rfm69-mqtt-dashboard/releases">Download releases</a>
+    </div>
+    <p id="version" class="notice">Loading latest firmware version…</p>
+    <footer>
+      <p>Board targets: ESP32 Dev Module, ESP32-C3 Super Mini, and LOLIN S2 Mini.</p>
+      <p>See the <a href="https://github.com/wunderbaum/lacrosse-mqtt-gateway-esp32-rfm69-mqtt-dashboard">project README</a> for wiring, setup, and security notes.</p>
+    </footer>
+  </main>
+  <script>
+    fetch('manifest.json')
+      .then(response => {
+        if (!response.ok) throw new Error(`Manifest request failed: ${response.status}`);
+        return response.json();
+      })
+      .then(manifest => {
+        document.getElementById('version').textContent = `Latest firmware: ${manifest.version}`;
+      })
+      .catch(error => {
+        document.getElementById('version').textContent = 'Could not load the firmware version.';
+        console.error(error);
+      });
+  </script>
+</body>
+</html>

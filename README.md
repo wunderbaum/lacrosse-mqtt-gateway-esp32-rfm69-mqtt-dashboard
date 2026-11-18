@@ -30,7 +30,20 @@ pio device monitor
 ```
 
 The web UI is embedded in the firmware; no filesystem upload is required.
-Flash this OTA-enabled firmware over USB the first time; later releases can be installed from the web UI.
+For a first install, use the [online USB flasher](https://wunderbaum.github.io/lacrosse-mqtt-gateway-esp32-rfm69-mqtt-dashboard/) or upload with PlatformIO. The online flasher requires a Web Serial-compatible browser, a USB data cable, and an HTTPS connection.
+
+## Releases and online flasher
+
+See [GitHub Releases](https://github.com/wunderbaum/lacrosse-mqtt-gateway-esp32-rfm69-mqtt-dashboard/releases) for compiled firmware. Each release includes an OTA application binary (`*-ota.bin`) for the gateway's **Firmware update** page and the bootloader, partition table, and `boot_app0` images used for USB flashing.
+
+To publish a release, push a version tag, for example:
+
+```sh
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+GitHub Actions builds all three board targets, creates the release, and deploys the latest firmware to the online flasher. Tags beginning with `v0.` are marked as prereleases. A new USB install erases existing flash data; back up any settings you need first.
 
 ## Setup
 
@@ -39,7 +52,7 @@ Flash this OTA-enabled firmware over USB the first time; later releases can be i
 3. Set Wi-Fi and MQTT broker details and, if needed, adjust the RFM69 GPIO pins in **Network / MQTT**, then save and reboot.
 4. Open the gateway's LAN IP and use **Sensor setup** to name discovered IDs and enable or disable MQTT publishing.
 
-Change the setup AP password in `src/main.cpp` before deployment. Configure an OTA update password (at least 8 characters) in **Network / MQTT**, then open **Firmware update** and upload the matching `.pio/build/<environment>/firmware.bin` file. Firmware uploads require this password and reboot the gateway after a successful update.
+Change the setup AP password in `src/main.cpp` before deployment. Configure an OTA update password (at least 8 characters) in **Network / MQTT**, then open **Firmware update** and upload the matching `.pio/build/<environment>/firmware.bin` file or the release's `*-ota.bin` asset. Firmware uploads require this password and reboot the gateway after a successful update.
 
 The rest of the local web interface has no authentication. OTA password authentication uses HTTP Basic over plain HTTP, so it is not encrypted in transit. Use the interface only on a trusted network and do not expose it directly to the internet.
 

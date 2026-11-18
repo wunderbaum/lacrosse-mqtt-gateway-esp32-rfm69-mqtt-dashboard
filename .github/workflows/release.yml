@@ -1,0 +1,97 @@
+name: Build firmware releases and deploy web flasher
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        environment:
+          - esp32dev
+          - esp32-c3-super-mini
+          - esp32-s2-mini
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PlatformIO
+        run: python -m pip install platformio
+
+      - name: Build firmware
+        run: pio run -e "${{ matrix.environment }}"
+
+      - name: Collect OTA and serial-flash images
+        env:
+          BUILD_ENV: ${{ matrix.environment }}
+        run: |
+          mkdir release-artifacts
+          cp ".pio/build/$BUILD_ENV/firmware.bin" "release-artifacts/$BUILD_ENV-ota.bin"
+          cp ".pio/build/$BUILD_ENV/bootloader.bin" "release-artifacts/$BUILD_ENV-bootloader.bin"
+          cp ".pio/build/$BUILD_ENV/partitions.bin" "release-artifacts/$BUILD_ENV-partitions.bin"
+          cp "$HOME/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin" \
+            "release-artifacts/$BUILD_ENV-boot_app0.bin"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.environment }}
+          path: release-artifacts/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: firmware-*
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: Prepare release assets and web flasher
+        run: |
+          python scripts/package_release.py \
+            --version "${GITHUB_REF_NAME}" \
+            --artifacts release-artifacts \
+            --site site
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: LaCrosse MQTT Gateway ${{ github.ref_name }}
+          generate_release_notes: true
+          prerelease: ${{ startsWith(github.ref_name, 'v0.') }}
+          files: release-artifacts/*
+          fail_on_unmatched_files: true
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy web flasher
+        id: deployment
+        uses: actions/deploy-pages@v4
