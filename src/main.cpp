@@ -46,18 +46,19 @@ uint32_t lastMqttTry=0;
 bool usingAp=false;
 bool otaUploadAuthorized=false,otaUploadActive=false,otaUploadSucceeded=false;
 String otaUploadError;
+bool rfm69Connected=false;
 
 uint8_t readReg(uint8_t a){digitalWrite(cfg.pinNss,LOW);SPI.transfer(a&0x7f);uint8_t v=SPI.transfer(0);digitalWrite(cfg.pinNss,HIGH);return v;}
 void writeReg(uint8_t a,uint8_t v){digitalWrite(cfg.pinNss,LOW);SPI.transfer(a|0x80);SPI.transfer(v);digitalWrite(cfg.pinNss,HIGH);}
 void radioMode(uint8_t m){writeReg(0x01,(readReg(0x01)&0xe3)|(m&0x1c));}
 void setFrequency(uint32_t khz){uint32_t frf=(uint64_t(khz)*1000ULL*524288ULL)/32000000ULL;writeReg(0x07,frf>>16);writeReg(0x08,frf>>8);writeReg(0x09,frf);}
-void radioBegin(){
+bool radioBegin(){
   pinMode(cfg.pinNss,OUTPUT);digitalWrite(cfg.pinNss,HIGH);pinMode(cfg.pinReset,OUTPUT);
   pinMode(cfg.pinDio0,INPUT);
   digitalWrite(cfg.pinReset,HIGH);delay(1);digitalWrite(cfg.pinReset,LOW);delay(10);
   SPI.begin(cfg.pinSck,cfg.pinMiso,cfg.pinMosi,cfg.pinNss);
   uint8_t version=readReg(0x10);Serial.printf("RFM69 version register: 0x%02X\n",version);
-  if(version==0x00||version==0xff)Serial.println("Radio SPI check failed; verify wiring and power.");
+  if(version!=0x24){Serial.println("RFM69CW not detected; expected version 0x24. Verify wiring and power.");return false;}
   radioMode(0x04);delay(2);
   writeReg(0x02,0x00); // FSK, packet mode
   uint16_t br=(32000000UL+RF_BITRATE/2)/RF_BITRATE;writeReg(0x03,br>>8);writeReg(0x04,br);
@@ -70,6 +71,7 @@ void radioBegin(){
   writeReg(0x3c,0x8f);writeReg(0x3d,0x12);writeReg(0x6f,0x30);
   writeReg(0x28,0x10);radioMode(0x10);
   Serial.printf("RFM69 receive profile: %.3f MHz, %lu bit/s, fixed %u-byte frame\n",RF_FREQUENCY_KHZ/1000.0,(unsigned long)RF_BITRATE,RF_FRAME_SIZE);
+  return true;
 }
 String slug(String s){s.trim();s.toLowerCase();String out;bool dash=false;for(size_t i=0;i<s.length();++i){char c=s[i];if(isalnum((unsigned char)c)){out+=c;dash=false;}else if(!dash&&out.length()){out+='-';dash=true;}}while(out.endsWith("-"))out.remove(out.length()-1);return out.length()?out:"sensor";}
 Sensor *findSensor(uint8_t id){for(auto &s:sensors)if(s.id==id)return &s;return nullptr;}
@@ -94,7 +96,7 @@ void publishDiscovery(const Sensor&s,const char *entity){
 void announceSensor(const Sensor&s){publishDiscovery(s,"temperature");publishDiscovery(s,"humidity");publishDiscovery(s,"battery");}
 void publishReading(const Sensor&s){if(!mqtt.connected()||!s.enabled||!s.hasReading)return;JsonDocument d;d["id"]=s.id;d["temperature"]=s.temperature;d["humidity"]=s.humidity;d["battery_low"]=s.lowBattery;d["new_battery"]=s.newBattery;d["rssi"]=s.rssi;d["updated"]=s.updated;String payload;serializeJson(d,payload);String topic=stateTopic(s);mqtt.publish(topic.c_str(),payload.c_str(),true);}
 void updateSensor(const LaCrosseReading&r){Sensor*s=findSensor(r.id);if(!s){Sensor fresh;fresh.id=r.id;fresh.name="Sensor "+String(r.id);sensors.push_back(fresh);s=&sensors.back();saveSensors();Serial.printf("Discovered sensor ID %u\n",r.id);if(mqtt.connected())announceSensor(*s);}s->temperature=r.temperature;s->humidity=r.humidity;s->lowBattery=r.lowBattery;s->newBattery=r.newBattery;s->rssi=-(int(readReg(0x24))/2);s->updated=millis();s->hasReading=true;samples.push_back({s->id,s->temperature,millis()});if(samples.size()>HISTORY_LIMIT)samples.erase(samples.begin());publishReading(*s);}
-void radioPoll(){if(!(readReg(0x28)&0x04))return;uint8_t bytes[RF_FRAME_SIZE];digitalWrite(cfg.pinNss,LOW);SPI.transfer(0x00);for(auto &b:bytes)b=SPI.transfer(0);digitalWrite(cfg.pinNss,HIGH);writeReg(0x28,0x10);writeReg(0x3d,0x04);LaCrosseReading r;if(decodeLaCrosseFrame(bytes,r)){Serial.printf("Frame id=%u temp=%.1f humidity=%u\n",r.id,r.temperature,r.humidity);updateSensor(r);}else{Serial.print("Rejected RF bytes:");for(uint8_t b:bytes)Serial.printf(" %02X",b);Serial.println();}}
+void radioPoll(){if(!rfm69Connected||!(readReg(0x28)&0x04))return;uint8_t bytes[RF_FRAME_SIZE];digitalWrite(cfg.pinNss,LOW);SPI.transfer(0x00);for(auto &b:bytes)b=SPI.transfer(0);digitalWrite(cfg.pinNss,HIGH);writeReg(0x28,0x10);writeReg(0x3d,0x04);LaCrosseReading r;if(decodeLaCrosseFrame(bytes,r)){Serial.printf("Frame id=%u temp=%.1f humidity=%u\n",r.id,r.temperature,r.humidity);updateSensor(r);}else{Serial.print("Rejected RF bytes:");for(uint8_t b:bytes)Serial.printf(" %02X",b);Serial.println();}}
 void onMqttConnected(){mqtt.publish(availabilityTopic().c_str(),"online",true);for(const auto&s:sensors){announceSensor(s);publishReading(s);}Serial.println("MQTT connected; discovery announced.");}
 void mqttReconnect(){if(cfg.mqttHost.isEmpty()||mqtt.connected()||millis()-lastMqttTry<5000)return;lastMqttTry=millis();mqtt.setServer(cfg.mqttHost.c_str(),cfg.mqttPort);mqtt.setBufferSize(1024);String client="lacrosse-"+String((uint32_t)ESP.getEfuseMac(),HEX);String will=availabilityTopic();bool ok=cfg.mqttUser.isEmpty()?mqtt.connect(client.c_str(),will.c_str(),0,true,"offline"):mqtt.connect(client.c_str(),cfg.mqttUser.c_str(),cfg.mqttPassword.c_str(),will.c_str(),0,true,"offline");if(ok)onMqttConnected();else Serial.printf("MQTT connect failed, state=%d\n",mqtt.state());}
 
@@ -174,7 +176,7 @@ async function refresh(){
     if(!response.ok)throw new Error(`State request failed: ${response.status}`);
     const d=await response.json();
     data=d.sensors;
-    byId('status').textContent=d.wifi?'Wi-Fi connected':'Setup AP';
+    byId('status').textContent=(d.wifi?'Wi-Fi connected':'Setup AP')+' · '+(d.rfm69Connected?'RFM69CW connected':'RFM69CW not detected');
     byId('cards').innerHTML=data.map(s=>`<article class="card"><b>${esc(s.name)}</b><p>${s.hasReading?Number(s.temperature).toFixed(1)+' °C':'Waiting'} · ${s.hasReading?s.humidity+'%':'--'}</p><small>${s.lowBattery?'Low battery · ':''}ID ${s.id} · ${s.age}s</small></article>`).join('')||'No sensors received yet';
     byId('rows').innerHTML=data.map(s=>`<tr data-id="${s.id}"><td>${s.id}</td><td><input type="text" maxlength="40" value="${esc(s.name)}"></td><td><input type="checkbox" ${s.enabled?'checked':''}></td><td>${s.hasReading?s.age+'s ago':'Not received'}</td></tr>`).join('');
   }catch(e){byId('status').textContent='Gateway unavailable';console.error(e)}
@@ -292,7 +294,7 @@ void handleOtaUpload(){
 void setupWeb(){
  web.on("/",HTTP_GET,[]{web.send_P(200,"text/html",PAGE);});
  web.on("/favicon.ico",HTTP_GET,[]{web.send_P(200,"image/x-icon",reinterpret_cast<PGM_P>(FAVICON_ICO),FAVICON_ICO_SIZE);});
- web.on("/api/state",HTTP_GET,[]{JsonDocument d;d["wifi"]=WiFi.status()==WL_CONNECTED;JsonArray a=d["sensors"].to<JsonArray>();for(const auto&s:sensors){JsonObject o=a.add<JsonObject>();o["id"]=s.id;o["name"]=s.name;o["enabled"]=s.enabled;o["hasReading"]=s.hasReading;o["temperature"]=s.temperature;o["humidity"]=s.humidity;o["lowBattery"]=s.lowBattery;o["rssi"]=s.rssi;o["age"]=s.hasReading?(millis()-s.updated)/1000:0;JsonArray h=o["history"].to<JsonArray>();for(const auto&p:samples)if(p.id==s.id){JsonObject q=h.add<JsonObject>();q["temperature"]=p.temperature;q["at"]=p.at;}}sendJson(d);});
+ web.on("/api/state",HTTP_GET,[]{JsonDocument d;d["wifi"]=WiFi.status()==WL_CONNECTED;d["rfm69Connected"]=rfm69Connected;JsonArray a=d["sensors"].to<JsonArray>();for(const auto&s:sensors){JsonObject o=a.add<JsonObject>();o["id"]=s.id;o["name"]=s.name;o["enabled"]=s.enabled;o["hasReading"]=s.hasReading;o["temperature"]=s.temperature;o["humidity"]=s.humidity;o["lowBattery"]=s.lowBattery;o["rssi"]=s.rssi;o["age"]=s.hasReading?(millis()-s.updated)/1000:0;JsonArray h=o["history"].to<JsonArray>();for(const auto&p:samples)if(p.id==s.id){JsonObject q=h.add<JsonObject>();q["temperature"]=p.temperature;q["at"]=p.at;}}sendJson(d);});
  web.on("/api/settings",HTTP_GET,[]{
    JsonDocument d;
    d["ssid"]=cfg.ssid;d["mqttHost"]=cfg.mqttHost;d["mqttPort"]=cfg.mqttPort;d["mqttUser"]=cfg.mqttUser;d["baseTopic"]=cfg.baseTopic;
@@ -340,7 +342,7 @@ void setup(){
   loadSettings();
   loadSensors();
   Serial.printf("Loaded %u sensor(s)\n",(unsigned)sensors.size());
-  radioBegin();
+  rfm69Connected=radioBegin();
   if(cfg.ssid.length()){
     WiFi.mode(WIFI_STA);
     WiFi.begin(cfg.ssid.c_str(),cfg.wifiPassword.c_str());

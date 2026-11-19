@@ -52,6 +52,8 @@ GitHub Actions builds all three board targets, creates the release, and deploys 
 3. Set Wi-Fi and MQTT broker details and, if needed, adjust the RFM69 GPIO pins in **Network / MQTT**, then save and reboot.
 4. Open the gateway's LAN IP and use **Sensor setup** to name discovered IDs and enable or disable MQTT publishing.
 
+The dashboard reports whether an RFM69CW was detected at startup. Detection checks that its SPI version register returns `0x24`; if not, the firmware skips radio polling. Check the module's power and SPI wiring if it is not detected.
+
 Change the setup AP password in `src/main.cpp` before deployment. Configure an OTA update password (at least 8 characters) in **Network / MQTT**, then open **Firmware update** and upload the matching `.pio/build/<environment>/firmware.bin` file or the release's `*-ota.bin` asset. Firmware uploads require this password and reboot the gateway after a successful update.
 
 The rest of the local web interface has no authentication. OTA password authentication uses HTTP Basic over plain HTTP, so it is not encrypted in transit. Use the interface only on a trusted network and do not expose it directly to the internet.

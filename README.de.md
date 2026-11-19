@@ -53,6 +53,8 @@ GitHub Actions erstellt die Firmware für alle drei Boards, veröffentlicht das 
 3. Tragen Sie unter **Network / MQTT** die WLAN- und MQTT-Broker-Daten ein. Passen Sie bei Bedarf auch die RFM69-GPIOs an und speichern Sie die Einstellungen. Das Gateway startet anschließend neu.
 4. Öffnen Sie die LAN-IP-Adresse des Gateways und benennen Sie unter **Sensor setup** erkannte Sensoren und aktivieren oder deaktivieren Sie deren MQTT-Veröffentlichung.
 
+Das Dashboard zeigt an, ob beim Start ein RFM69CW erkannt wurde. Dazu wird geprüft, ob das SPI-Versionsregister den Wert `0x24` zurückgibt. Andernfalls überspringt die Firmware die Funkabfrage. Prüfen Sie Stromversorgung und SPI-Verkabelung, wenn das Modul nicht erkannt wird.
+
 Ändern Sie vor dem Einsatz das Passwort des Setup-Access-Points in `src/main.cpp`. Legen Sie unter **Network / MQTT** ein OTA-Passwort mit mindestens 8 Zeichen fest. Öffnen Sie anschließend **Firmware update** und laden Sie die passende Datei `.pio/build/<environment>/firmware.bin` oder das `*-ota.bin`-Release-Asset hoch. Für Firmware-Uploads ist dieses Passwort erforderlich; nach einem erfolgreichen Update startet das Gateway neu.
 
 Der übrige Teil der lokalen Weboberfläche ist nicht authentifiziert. Die OTA-Passwortprüfung verwendet HTTP Basic über unverschlüsseltes HTTP; das Passwort ist daher bei der Übertragung nicht verschlüsselt. Verwenden Sie die Oberfläche nur in einem vertrauenswürdigen Netzwerk und machen Sie sie nicht direkt aus dem Internet erreichbar.
