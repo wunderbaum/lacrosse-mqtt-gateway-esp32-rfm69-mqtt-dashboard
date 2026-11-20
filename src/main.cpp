@@ -65,7 +65,7 @@ bool radioBegin(){
   uint16_t fd=(uint64_t(RF_DEVIATION_HZ)*524288ULL)/32000000ULL;writeReg(0x05,fd>>8);writeReg(0x06,fd);
   setFrequency(RF_FREQUENCY_KHZ);
   writeReg(0x18,0x88);writeReg(0x19,0x42);writeReg(0x29,220);
-  writeReg(0x2e,0x98);writeReg(0x2f,0x2d);writeReg(0x30,0xd4);
+  writeReg(0x2e,0x88);writeReg(0x2f,0x2d);writeReg(0x30,0xd4);
   writeReg(0x37,0x00); // fixed-length packet, hardware CRC disabled
   writeReg(0x38,RF_FRAME_SIZE);
   writeReg(0x3c,0x8f);writeReg(0x3d,0x12);writeReg(0x6f,0x30);
@@ -104,6 +104,7 @@ const char PAGE[] PROGMEM=R"HTML(
 <!doctype html>
 <html>
 <head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="icon" href="/favicon.ico" type="image/x-icon">
 <title>LaCrosse Gateway</title>
@@ -292,7 +293,7 @@ void handleOtaUpload(){
   }
 }
 void setupWeb(){
- web.on("/",HTTP_GET,[]{web.send_P(200,"text/html",PAGE);});
+ web.on("/",HTTP_GET,[]{web.send_P(200,"text/html; charset=utf-8",PAGE);});
  web.on("/favicon.ico",HTTP_GET,[]{web.send_P(200,"image/x-icon",reinterpret_cast<PGM_P>(FAVICON_ICO),FAVICON_ICO_SIZE);});
  web.on("/api/state",HTTP_GET,[]{JsonDocument d;d["wifi"]=WiFi.status()==WL_CONNECTED;d["rfm69Connected"]=rfm69Connected;JsonArray a=d["sensors"].to<JsonArray>();for(const auto&s:sensors){JsonObject o=a.add<JsonObject>();o["id"]=s.id;o["name"]=s.name;o["enabled"]=s.enabled;o["hasReading"]=s.hasReading;o["temperature"]=s.temperature;o["humidity"]=s.humidity;o["lowBattery"]=s.lowBattery;o["rssi"]=s.rssi;o["age"]=s.hasReading?(millis()-s.updated)/1000:0;JsonArray h=o["history"].to<JsonArray>();for(const auto&p:samples)if(p.id==s.id){JsonObject q=h.add<JsonObject>();q["temperature"]=p.temperature;q["at"]=p.at;}}sendJson(d);});
  web.on("/api/settings",HTTP_GET,[]{
