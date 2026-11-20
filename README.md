@@ -49,7 +49,7 @@ GitHub Actions builds all three board targets, creates the release, and deploys 
 
 1. On first boot, the gateway creates Wi-Fi AP `LaCrosse-Gateway`, password `lacrosse868`.
 2. Join it and open `http://192.168.4.1/`.
-3. Set Wi-Fi and MQTT broker details and, if needed, adjust the RFM69 GPIO pins in **Network / MQTT**, then save and reboot.
+3. Set Wi-Fi and MQTT broker details and, if needed, adjust the RFM69 GPIO pins or receive bandwidth in **Network / MQTT**, then save and reboot.
 4. Open the gateway's LAN IP and use **Sensor setup** to name discovered IDs and enable or disable MQTT publishing.
 
 The dashboard reports whether an RFM69CW was detected at startup. Detection checks that its SPI version register returns `0x24`; if not, the firmware skips radio polling. Check the module's power and SPI wiring if it is not detected.
@@ -68,6 +68,6 @@ Home Assistant's MQTT integration must connect to the same broker. Discovery pre
 
 ## RF profile and limitations
 
-The initial radio profile is FSK at 868.300 MHz, 17.241 kbit/s, 90 kHz deviation, sync word `2D D4`, fixed five-byte receive payload, and a LaCrosse-style CRC-8 polynomial `0x31`. Decoder unit tests cover valid frames, temperature/humidity/battery decoding, and invalid CRC/header/BCD data.
+The initial radio profile is FSK at 868.300 MHz, 17.241 kbit/s, 90 kHz deviation, sync word `2D D4`, fixed five-byte receive payload, and a LaCrosse-style CRC-8 polynomial `0x31`. Temperature-only frames with the LaCrosse no-humidity marker (`0x6A`) are supported; no humidity entity or value is published for those sensors. The receive bandwidth can be set to 125, 200, or 250 kHz under **Network / MQTT → RFM69 receive bandwidth**; it defaults to 250 kHz. A wider filter can help with weak or slightly off-frequency signals, but can also admit more interference. Changes apply after reboot. Decoder unit tests cover valid frames, temperature-only frames, temperature/humidity/battery decoding, and invalid CRC/header/BCD/humidity data.
 
 Technoline is a brand covering different RF protocols. Firmware compilation and tests do not establish that a specific sensor model uses this exact radio format. Confirm reception with your hardware and share the model number or captures if the sensor is not detected. Do not treat this initial RF profile as validated for all Technoline sensors.

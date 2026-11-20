@@ -14,10 +14,12 @@ static void makeFrame(uint8_t id,float temp,uint8_t humidity,bool low,bool fresh
   out[3]=uint8_t(humidity&0x7f)|(low?0x80:0);
   out[4]=testCrc(out,4);
 }
-static void testDecodeValidFrame(){uint8_t b[5];makeFrame(56,18.0f,37,false,true,b);LaCrosseReading r;TEST_ASSERT_TRUE(decodeLaCrosseFrame(b,r));TEST_ASSERT_EQUAL_UINT8(56,r.id);TEST_ASSERT_FLOAT_WITHIN(0.01f,18.0f,r.temperature);TEST_ASSERT_EQUAL_UINT8(37,r.humidity);TEST_ASSERT_FALSE(r.lowBattery);TEST_ASSERT_TRUE(r.newBattery);}
+static void testDecodeValidFrame(){uint8_t b[5];makeFrame(56,18.0f,37,false,true,b);LaCrosseReading r;TEST_ASSERT_TRUE(decodeLaCrosseFrame(b,r));TEST_ASSERT_EQUAL_UINT8(56,r.id);TEST_ASSERT_FLOAT_WITHIN(0.01f,18.0f,r.temperature);TEST_ASSERT_EQUAL_UINT8(37,r.humidity);TEST_ASSERT_TRUE(r.hasHumidity);TEST_ASSERT_FALSE(r.lowBattery);TEST_ASSERT_TRUE(r.newBattery);}
+static void testDecodeTemperatureOnlyFrame(){uint8_t b[5]={0x91,0x81,0x45,0x6a,0x5f};LaCrosseReading r;TEST_ASSERT_TRUE(decodeLaCrosseFrame(b,r));TEST_ASSERT_EQUAL_UINT8(6,r.id);TEST_ASSERT_FLOAT_WITHIN(0.01f,-25.5f,r.temperature);TEST_ASSERT_FALSE(r.hasHumidity);}
 static void testDecodeLowBattery(){uint8_t b[5];makeFrame(12,-5.3f,89,true,false,b);LaCrosseReading r;TEST_ASSERT_TRUE(decodeLaCrosseFrame(b,r));TEST_ASSERT_EQUAL_UINT8(12,r.id);TEST_ASSERT_FLOAT_WITHIN(0.01f,-5.3f,r.temperature);TEST_ASSERT_TRUE(r.lowBattery);}
 static void testRejectBadCrc(){uint8_t b[5];makeFrame(56,18.0f,37,false,false,b);b[4]^=1;LaCrosseReading r;TEST_ASSERT_FALSE(decodeLaCrosseFrame(b,r));}
 static void testRejectBadHeader(){uint8_t b[5];makeFrame(56,18.0f,37,false,false,b);b[0]^=0x10;b[4]=testCrc(b,4);LaCrosseReading r;TEST_ASSERT_FALSE(decodeLaCrosseFrame(b,r));}
 static void testRejectInvalidBcd(){uint8_t b[5];makeFrame(56,18.0f,37,false,false,b);b[1]=(b[1]&0xf0)|0x0a;b[4]=testCrc(b,4);LaCrosseReading r;TEST_ASSERT_FALSE(decodeLaCrosseFrame(b,r));}
-void setup(){UNITY_BEGIN();RUN_TEST(testDecodeValidFrame);RUN_TEST(testDecodeLowBattery);RUN_TEST(testRejectBadCrc);RUN_TEST(testRejectBadHeader);RUN_TEST(testRejectInvalidBcd);UNITY_END();}
+static void testRejectInvalidHumidity(){uint8_t b[5];makeFrame(56,18.0f,101,false,false,b);LaCrosseReading r;TEST_ASSERT_FALSE(decodeLaCrosseFrame(b,r));}
+void setup(){UNITY_BEGIN();RUN_TEST(testDecodeValidFrame);RUN_TEST(testDecodeTemperatureOnlyFrame);RUN_TEST(testDecodeLowBattery);RUN_TEST(testRejectBadCrc);RUN_TEST(testRejectBadHeader);RUN_TEST(testRejectInvalidBcd);RUN_TEST(testRejectInvalidHumidity);UNITY_END();}
 void loop(){}

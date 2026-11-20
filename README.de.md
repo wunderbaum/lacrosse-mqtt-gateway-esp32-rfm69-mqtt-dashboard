@@ -50,7 +50,7 @@ GitHub Actions erstellt die Firmware für alle drei Boards, veröffentlicht das 
 
 1. Beim ersten Start erstellt das Gateway den WLAN-Access-Point `LaCrosse-Gateway` mit dem Passwort `lacrosse868`.
 2. Verbinden Sie sich damit und öffnen Sie `http://192.168.4.1/`.
-3. Tragen Sie unter **Network / MQTT** die WLAN- und MQTT-Broker-Daten ein. Passen Sie bei Bedarf auch die RFM69-GPIOs an und speichern Sie die Einstellungen. Das Gateway startet anschließend neu.
+3. Tragen Sie unter **Network / MQTT** die WLAN- und MQTT-Broker-Daten ein. Passen Sie bei Bedarf auch die RFM69-GPIOs oder die Empfangsbandbreite an und speichern Sie die Einstellungen. Das Gateway startet anschließend neu.
 4. Öffnen Sie die LAN-IP-Adresse des Gateways und benennen Sie unter **Sensor setup** erkannte Sensoren und aktivieren oder deaktivieren Sie deren MQTT-Veröffentlichung.
 
 Das Dashboard zeigt an, ob beim Start ein RFM69CW erkannt wurde. Dazu wird geprüft, ob das SPI-Versionsregister den Wert `0x24` zurückgibt. Andernfalls überspringt die Firmware die Funkabfrage. Prüfen Sie Stromversorgung und SPI-Verkabelung, wenn das Modul nicht erkannt wird.
@@ -69,6 +69,6 @@ Die MQTT-Integration von Home Assistant muss mit demselben Broker verbunden sein
 
 ## Funkprofil und Einschränkungen
 
-Das initiale Funkprofil verwendet FSK mit 868,300 MHz, 17,241 kbit/s, 90 kHz Frequenzhub, dem Synchronwort `2D D4`, einem festen Empfangsrahmen von fünf Bytes und einer LaCrosse-artigen CRC-8-Prüfsumme mit Polynom `0x31`. Decoder-Unit-Tests prüfen gültige Rahmen, Temperatur-/Luftfeuchtigkeits-/Batterie-Dekodierung sowie ungültige CRC-, Header- und BCD-Daten.
+Das initiale Funkprofil verwendet FSK mit 868,300 MHz, 17,241 kbit/s, 90 kHz Frequenzhub, dem Synchronwort `2D D4`, einem festen Empfangsrahmen von fünf Bytes und einer LaCrosse-artigen CRC-8-Prüfsumme mit Polynom `0x31`. Temperatur-only-Rahmen mit der LaCrosse-Kennung für fehlende Luftfeuchtigkeit (`0x6A`) werden unterstützt; für diese Sensoren werden weder Luftfeuchtigkeitswerte noch eine MQTT-Discovery-Entität veröffentlicht. Die Empfangsbandbreite kann unter **Network / MQTT → RFM69 receive bandwidth** auf 125, 200 oder 250 kHz eingestellt werden; Standardwert ist 250 kHz. Ein breiterer Filter kann bei schwachen oder leicht frequenzverschobenen Signalen helfen, nimmt aber auch mehr Störungen auf. Änderungen werden nach einem Neustart angewendet. Decoder-Unit-Tests prüfen gültige Rahmen, reine Temperatur-Rahmen, Temperatur-/Luftfeuchtigkeits-/Batterie-Dekodierung sowie ungültige CRC-, Header-, BCD- und Luftfeuchtigkeitsdaten.
 
 Technoline ist eine Marke mit verschiedenen Funkprotokollen. Ein erfolgreicher Firmware-Build oder bestandene Tests belegen nicht, dass ein bestimmtes Sensormodell genau dieses Funkformat verwendet. Prüfen Sie den Empfang mit Ihrer Hardware und nennen Sie das Modell oder stellen Sie Funkmitschnitte bereit, falls der Sensor nicht erkannt wird. Dieses initiale Funkprofil ist nicht für alle Technoline-Sensoren validiert.
