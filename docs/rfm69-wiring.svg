@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 600" role="img" aria-labelledby="title description">
+  <title id="title">RFM69CW to ESP32-C3 Super Mini wiring</title>
+  <desc id="description">Eight signal-level connections between an RFM69CW breakout and an ESP32-C3 Super Mini using the firmware default GPIO pins.</desc>
+  <rect width="1120" height="600" rx="22" fill="#f3f6fa"/>
+  <text x="56" y="55" fill="#172033" font-family="system-ui, sans-serif" font-size="28" font-weight="700">RFM69CW ↔ ESP32-C3 Super Mini</text>
+  <text x="56" y="84" fill="#526176" font-family="system-ui, sans-serif" font-size="15">Default firmware pin mapping · signal-level diagram (breakout pin order may vary)</text>
+
+  <rect x="56" y="120" width="340" height="368" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="82" y="158" fill="#172033" font-family="system-ui, sans-serif" font-size="18" font-weight="700">RFM69CW · 868 MHz</text>
+  <text x="82" y="180" fill="#64748b" font-family="system-ui, sans-serif" font-size="12">Module breakout</text>
+  <rect x="724" y="120" width="340" height="368" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="750" y="158" fill="#172033" font-family="system-ui, sans-serif" font-size="18" font-weight="700">ESP32-C3 Super Mini</text>
+  <text x="750" y="180" fill="#64748b" font-family="system-ui, sans-serif" font-size="12">GPIO labels refer to the GPIO number</text>
+
+  <g font-family="system-ui, sans-serif" font-size="15" font-weight="650">
+    <text x="82" y="225" fill="#b91c1c">VCC</text>
+    <text x="82" y="265" fill="#475569">GND</text>
+    <text x="82" y="305" fill="#047857">SCK</text>
+    <text x="82" y="345" fill="#1d4ed8">MISO</text>
+    <text x="82" y="385" fill="#c2410c">MOSI</text>
+    <text x="82" y="425" fill="#7e22ce">NSS / CS</text>
+    <text x="82" y="465" fill="#a16207">RESET</text>
+    <text x="82" y="505" fill="#0f766e">DIO0</text>
+
+    <text x="750" y="225" fill="#b91c1c">3V3</text>
+    <text x="750" y="265" fill="#475569">GND</text>
+    <text x="750" y="305" fill="#047857">GPIO 4</text>
+    <text x="750" y="345" fill="#1d4ed8">GPIO 5</text>
+    <text x="750" y="385" fill="#c2410c">GPIO 6</text>
+    <text x="750" y="425" fill="#7e22ce">GPIO 7</text>
+    <text x="750" y="465" fill="#a16207">GPIO 2</text>
+    <text x="750" y="505" fill="#0f766e">GPIO 3</text>
+  </g>
+
+  <g fill="none" stroke-width="4" stroke-linecap="round">
+    <path d="M396 220 H724" stroke="#dc2626"/>
+    <path d="M396 260 H724" stroke="#64748b"/>
+    <path d="M396 300 H724" stroke="#10b981"/>
+    <path d="M396 340 H724" stroke="#3b82f6"/>
+    <path d="M396 380 H724" stroke="#f97316"/>
+    <path d="M396 420 H724" stroke="#a855f7"/>
+    <path d="M396 460 H724" stroke="#eab308"/>
+    <path d="M396 500 H724" stroke="#14b8a6"/>
+  </g>
+  <g fill="#ffffff" stroke-width="3">
+    <circle cx="396" cy="220" r="5" stroke="#dc2626"/><circle cx="724" cy="220" r="5" stroke="#dc2626"/>
+    <circle cx="396" cy="260" r="5" stroke="#64748b"/><circle cx="724" cy="260" r="5" stroke="#64748b"/>
+    <circle cx="396" cy="300" r="5" stroke="#10b981"/><circle cx="724" cy="300" r="5" stroke="#10b981"/>
+    <circle cx="396" cy="340" r="5" stroke="#3b82f6"/><circle cx="724" cy="340" r="5" stroke="#3b82f6"/>
+    <circle cx="396" cy="380" r="5" stroke="#f97316"/><circle cx="724" cy="380" r="5" stroke="#f97316"/>
+    <circle cx="396" cy="420" r="5" stroke="#a855f7"/><circle cx="724" cy="420" r="5" stroke="#a855f7"/>
+    <circle cx="396" cy="460" r="5" stroke="#eab308"/><circle cx="724" cy="460" r="5" stroke="#eab308"/>
+    <circle cx="396" cy="500" r="5" stroke="#14b8a6"/><circle cx="724" cy="500" r="5" stroke="#14b8a6"/>
+  </g>
+
+  <rect x="56" y="526" width="1008" height="50" rx="10" fill="#fee2e2"/>
+  <text x="76" y="548" fill="#991b1b" font-family="system-ui, sans-serif" font-size="14" font-weight="700">Power the radio from 3.3 V only — never connect it to 5 V.</text>
+  <text x="76" y="567" fill="#7f1d1d" font-family="system-ui, sans-serif" font-size="12">Connect ESP32 and radio grounds. Other supported board defaults are listed in the README table.</text>
+</svg>

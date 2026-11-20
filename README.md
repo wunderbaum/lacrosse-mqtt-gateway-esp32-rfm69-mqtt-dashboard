@@ -14,6 +14,10 @@ Use an ESP32 board, an **868 MHz RFM69CW**, a suitable antenna, and 3.3 V logic.
 | `esp32-c3-super-mini` | `esp32-c3-devkitm-1` | `4 / 5 / 6 / 7 / 2 / 3` |
 | `esp32-s2-mini` | `lolin_s2_mini` | `12 / 13 / 11 / 10 / 9 / 8` |
 
+The diagram shows the default wiring for the ESP32-C3 Super Mini; use the table above for the other boards.
+
+![RFM69CW to ESP32-C3 Super Mini wiring diagram](docs/rfm69-wiring.svg)
+
 These are default GPIO mappings; check the exact board revision and select supported, distinct pins in **Network / MQTT → RFM69 GPIO pins**. SCK, MOSI, NSS, and RESET must be output-capable pins. The selections are saved and applied after reboot. The `RADIO_PIN_*` flags in `platformio.ini` remain the first-boot defaults. DIO0 is mapped, although this firmware currently polls the radio over SPI.
 
 ### Build, flash, tests
@@ -51,6 +55,10 @@ GitHub Actions builds all three board targets, creates the release, and deploys 
 2. Join it and open `http://192.168.4.1/`.
 3. Set Wi-Fi and MQTT broker details and, if needed, adjust the RFM69 GPIO pins or receive bandwidth in **Network / MQTT**, then save and reboot.
 4. Open the gateway's LAN IP and use **Sensor setup** to name discovered IDs and enable or disable MQTT publishing.
+
+The dashboard plots recent temperature and humidity readings. The gateway keeps up to 48 samples in RAM, shared across sensors; this history is cleared on reboot.
+
+![Illustrative preview of the dashboard's temperature and humidity charts](docs/dashboard-preview.svg)
 
 The dashboard reports whether an RFM69CW was detected at startup. Detection checks that its SPI version register returns `0x24`; if not, the firmware skips radio polling. Check the module's power and SPI wiring if it is not detected.
 

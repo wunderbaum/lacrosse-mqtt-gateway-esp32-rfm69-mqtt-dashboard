@@ -14,6 +14,10 @@ Verwenden Sie ein ESP32-Board, ein **868-MHz-RFM69CW**, eine geeignete Antenne u
 | `esp32-c3-super-mini` | `esp32-c3-devkitm-1` | `4 / 5 / 6 / 7 / 2 / 3` |
 | `esp32-s2-mini` | `lolin_s2_mini` | `12 / 13 / 11 / 10 / 9 / 8` |
 
+Die Abbildung zeigt die Standardverdrahtung für das ESP32-C3 Super Mini; die Tabelle oben enthält die Vorgaben für die anderen Boards.
+
+![Verdrahtung des RFM69CW mit dem ESP32-C3 Super Mini](docs/rfm69-wiring.svg)
+
 Dies sind Standardbelegungen. Prüfen Sie die genaue Board-Revision und wählen Sie unter **Network / MQTT → RFM69 GPIO pins** unterstützte, unterschiedliche GPIOs aus. SCK, MOSI, NSS und RESET müssen als Ausgänge verwendbare Pins sein. Die Einstellungen werden gespeichert und nach einem Neustart angewendet. Die `RADIO_PIN_*`-Einträge in `platformio.ini` dienen weiterhin als Standardwerte beim ersten Start. DIO0 ist zugeordnet; die Firmware fragt das Funkmodul derzeit jedoch über SPI ab.
 
 ### Build, Flashen und Tests
@@ -52,6 +56,10 @@ GitHub Actions erstellt die Firmware für alle drei Boards, veröffentlicht das 
 2. Verbinden Sie sich damit und öffnen Sie `http://192.168.4.1/`.
 3. Tragen Sie unter **Network / MQTT** die WLAN- und MQTT-Broker-Daten ein. Passen Sie bei Bedarf auch die RFM69-GPIOs oder die Empfangsbandbreite an und speichern Sie die Einstellungen. Das Gateway startet anschließend neu.
 4. Öffnen Sie die LAN-IP-Adresse des Gateways und benennen Sie unter **Sensor setup** erkannte Sensoren und aktivieren oder deaktivieren Sie deren MQTT-Veröffentlichung.
+
+Das Dashboard zeichnet die letzten Temperatur- und Luftfeuchtigkeitsmessungen auf. Das Gateway speichert bis zu 48 Messungen gemeinsam für alle Sensoren im RAM; nach einem Neustart ist dieser Verlauf gelöscht.
+
+![Beispielansicht der Temperatur- und Luftfeuchtigkeitsdiagramme im Dashboard](docs/dashboard-preview.svg)
 
 Das Dashboard zeigt an, ob beim Start ein RFM69CW erkannt wurde. Dazu wird geprüft, ob das SPI-Versionsregister den Wert `0x24` zurückgibt. Andernfalls überspringt die Firmware die Funkabfrage. Prüfen Sie Stromversorgung und SPI-Verkabelung, wenn das Modul nicht erkannt wird.
 

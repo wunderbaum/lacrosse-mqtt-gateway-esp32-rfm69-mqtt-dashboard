@@ -40,7 +40,7 @@ struct Settings {
   uint8_t pinNss=RADIO_PIN_NSS,pinReset=RADIO_PIN_RESET,pinDio0=RADIO_PIN_DIO0;
 } cfg;
 struct Sensor { uint8_t id=0; String name; bool enabled=true,hasReading=false,hasHumidity=false,lowBattery=false,newBattery=false; float temperature=0; uint8_t humidity=0; int rssi=0; uint32_t updated=0; };
-struct Sample { uint8_t id; float temperature; uint32_t at; };
+struct Sample { uint8_t id,humidity; bool hasHumidity; float temperature; uint32_t at; };
 std::vector<Sensor> sensors;
 std::vector<Sample> samples;
 uint32_t lastMqttTry=0;
@@ -106,7 +106,7 @@ void updateSensor(const LaCrosseReading&r){
   bool announce=!s->hasReading||s->hasHumidity!=r.hasHumidity;
   s->temperature=r.temperature;s->humidity=r.humidity;s->hasHumidity=r.hasHumidity;s->lowBattery=r.lowBattery;s->newBattery=r.newBattery;s->rssi=-(int(readReg(0x24))/2);s->updated=millis();s->hasReading=true;
   if(announce&&mqtt.connected())announceSensor(*s);
-  samples.push_back({s->id,s->temperature,millis()});if(samples.size()>HISTORY_LIMIT)samples.erase(samples.begin());publishReading(*s);
+  samples.push_back({s->id,s->humidity,s->hasHumidity,s->temperature,millis()});if(samples.size()>HISTORY_LIMIT)samples.erase(samples.begin());publishReading(*s);
 }
 void radioPoll(){if(!rfm69Connected||!(readReg(0x28)&0x04))return;uint8_t bytes[RF_FRAME_SIZE];digitalWrite(cfg.pinNss,LOW);SPI.transfer(0x00);for(auto &b:bytes)b=SPI.transfer(0);digitalWrite(cfg.pinNss,HIGH);writeReg(0x28,0x10);writeReg(0x3d,0x04);LaCrosseReading r;if(decodeLaCrosseFrame(bytes,r)){if(r.hasHumidity)Serial.printf("Frame id=%u temp=%.1f humidity=%u\n",r.id,r.temperature,r.humidity);else Serial.printf("Frame id=%u temp=%.1f no humidity sensor\n",r.id,r.temperature);updateSensor(r);}else{Serial.print("Rejected RF bytes:");for(uint8_t b:bytes)Serial.printf(" %02X",b);Serial.println();}}
 void onMqttConnected(){mqtt.publish(availabilityTopic().c_str(),"online",true);for(const auto&s:sensors){announceSensor(s);publishReading(s);}Serial.println("MQTT connected; discovery announced.");}
@@ -128,7 +128,19 @@ td,th{text-align:left;padding:.7rem;border-bottom:1px solid #374151}
 input[type=text],input[type=password],input[type=number]{padding:.55rem;border-radius:6px;border:1px solid #4b5563;background:#111827;color:white}
 button{padding:.65rem 1rem;border:0;border-radius:7px;background:#34d399;font-weight:bold;cursor:pointer}
 .muted{color:#9ca3af}.nav{display:flex;gap:.5rem}
-.card{display:inline-block;vertical-align:top;min-width:220px;margin:.4rem;padding:1rem;background:#374151;border-radius:10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:.8rem}
+.card{min-width:0;padding:1rem;background:#374151;border-radius:10px}
+.card-heading,.reading,.chart-title{display:flex;align-items:baseline;justify-content:space-between;gap:.6rem}
+.reading{justify-content:flex-start;margin:.45rem 0}
+.reading-temp{font-size:1.55rem;font-weight:650}
+.reading-humidity{color:#60a5fa;font-size:1.15rem;font-weight:600}
+.chart-panel{margin-top:.65rem}
+.chart-title{font-size:.85rem;color:#d1d5db}
+.chart{display:block;width:100%;height:auto}
+.chart-grid{stroke:#4b5563;stroke-width:1;stroke-dasharray:3 4}
+.chart-axis{fill:#9ca3af;font-size:11px}
+.chart-empty{margin:.65rem 0 0;color:#9ca3af;font-size:.9rem}
+@media(max-width:600px){.cards{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -140,7 +152,7 @@ button{padding:.65rem 1rem;border:0;border-radius:7px;background:#34d399;font-we
 <button onclick="loadSettings()">Network / MQTT</button>
 <button onclick="showSection('ota')">Firmware update</button>
 </nav>
-<section id="dashboard"><h2>Live readings</h2><div id="cards"></div></section>
+<section id="dashboard"><h2>Live readings</h2><div id="cards" class="cards"></div></section>
 <section id="setup" hidden>
 <h2>Sensors</h2>
 <p class="muted">Detected IDs appear automatically. Rename sensors or switch MQTT publishing on/off.</p>
@@ -186,6 +198,52 @@ const byId=id=>document.getElementById(id);
 let data=[];
 function esc(x){return String(x).replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]))}
 function showSection(id){for(const section of ['dashboard','setup','settings','ota'])byId(section).hidden=section!==id}
+function formatSpan(ms){
+  const minutes=Math.round(ms/60000);
+  if(minutes<60)return `${minutes}m`;
+  const hours=Math.round(minutes/60);
+  if(hours<24)return `${hours}h`;
+  return `${Math.round(hours/24)}d`;
+}
+function chartFor(sensor,key,label,unit,color){
+  const points=(sensor.history||[]).filter(point=>Number.isFinite(point[key]));
+  if(!points.length)return '';
+  const values=points.map(point=>point[key]);
+  let low,high,ticks;
+  if(key==='humidity'){
+    low=0;high=100;ticks=[100,50,0];
+  }else{
+    const min=Math.min(...values),max=Math.max(...values);
+    const padding=max===min?1:Math.max((max-min)*.15,.2);
+    low=Math.floor((min-padding)*2)/2;
+    high=Math.ceil((max+padding)*2)/2;
+    if(high<=low)high=low+1;
+    ticks=[high,(high+low)/2,low];
+  }
+  const left=38,right=350,top=12,bottom=78;
+  const first=points[0].at>>>0,last=points[points.length-1].at>>>0;
+  const span=(last-first+4294967296)%4294967296;
+  const coordinates=points.map((point,index)=>{
+    const elapsed=((point.at>>>0)-first+4294967296)%4294967296;
+    const x=span?left+elapsed/span*(right-left):right;
+    const y=bottom-(point[key]-low)/(high-low)*(bottom-top);
+    return {x,y,index};
+  });
+  const path=coordinates.map((point,index)=>`${index?'L':'M'}${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
+  const grid=ticks.map(value=>{
+    const y=bottom-(value-low)/(high-low)*(bottom-top);
+    const text=key==='humidity'?value.toFixed(0):value.toFixed(1);
+    return `<line class="chart-grid" x1="${left}" y1="${y.toFixed(1)}" x2="${right}" y2="${y.toFixed(1)}"></line><text class="chart-axis" x="${left-6}" y="${(y+4).toFixed(1)}" text-anchor="end">${text}</text>`;
+  }).join('');
+  const latest=coordinates[coordinates.length-1];
+  return `<div class="chart-panel"><div class="chart-title"><span>${label}</span><span>${values[values.length-1].toFixed(1)} ${unit}</span></div><svg class="chart" viewBox="0 0 360 104" role="img" aria-label="${label} history"><title>${label} history</title>${grid}<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="${latest.x.toFixed(1)}" cy="${latest.y.toFixed(1)}" r="3.5" fill="${color}"></circle><text class="chart-axis" x="${left}" y="99">${span?'-'+formatSpan(span):'now'}</text><text class="chart-axis" x="${right}" y="99" text-anchor="end">now</text></svg></div>`;
+}
+function chartsFor(sensor){
+  if(!sensor.hasReading)return '<p class="chart-empty">Waiting for the first reading</p>';
+  const temperature=chartFor(sensor,'temperature','Temperature','°C','#34d399');
+  const humidity=sensor.hasHumidity?chartFor(sensor,'humidity','Humidity','%','#60a5fa'):'';
+  return temperature||humidity?temperature+humidity:'<p class="chart-empty">No history yet</p>';
+}
 function updateSensorRows(sensors){
   const rows=byId('rows');
   for(const sensor of sensors){
@@ -219,7 +277,7 @@ async function refresh(){
     const d=await response.json();
     data=d.sensors;
     byId('status').textContent=(d.wifi?'Wi-Fi connected':'Setup AP')+' · '+(d.rfm69Connected?'RFM69CW connected':'RFM69CW not detected');
-    byId('cards').innerHTML=data.map(s=>`<article class="card"><b>${esc(s.name)}</b><p>${s.hasReading?Number(s.temperature).toFixed(1)+' °C':'Waiting'} · ${s.hasReading?(s.hasHumidity?s.humidity+'%':'No humidity sensor'):'--'}</p><small>${s.lowBattery?'Low battery · ':''}ID ${s.id} · ${s.hasReading?'RSSI '+s.rssi+' dBm · ':''}${s.age}s</small></article>`).join('')||'No sensors received yet';
+    byId('cards').innerHTML=data.map(s=>`<article class="card"><div class="card-heading"><b>${esc(s.name)}</b><small>ID ${s.id}</small></div><div class="reading"><span class="reading-temp">${s.hasReading?Number(s.temperature).toFixed(1)+' °C':'Waiting'}</span><span class="reading-humidity">${s.hasReading?(s.hasHumidity?s.humidity+'%':'No humidity sensor'):'--'}</span></div><small>${s.lowBattery?'Low battery · ':''}${s.hasReading?'RSSI '+s.rssi+' dBm · ':''}${s.age}s ago</small>${chartsFor(s)}</article>`).join('')||'No sensors received yet';
     updateSensorRows(data);
   }catch(e){byId('status').textContent='Gateway unavailable';console.error(e)}
 }
@@ -336,7 +394,7 @@ void handleOtaUpload(){
 void setupWeb(){
  web.on("/",HTTP_GET,[]{web.send_P(200,"text/html; charset=utf-8",PAGE);});
  web.on("/favicon.ico",HTTP_GET,[]{web.send_P(200,"image/x-icon",reinterpret_cast<PGM_P>(FAVICON_ICO),FAVICON_ICO_SIZE);});
- web.on("/api/state",HTTP_GET,[]{JsonDocument d;d["wifi"]=WiFi.status()==WL_CONNECTED;d["rfm69Connected"]=rfm69Connected;JsonArray a=d["sensors"].to<JsonArray>();for(const auto&s:sensors){JsonObject o=a.add<JsonObject>();o["id"]=s.id;o["name"]=s.name;o["enabled"]=s.enabled;o["hasReading"]=s.hasReading;o["hasHumidity"]=s.hasHumidity;o["temperature"]=s.temperature;if(s.hasHumidity)o["humidity"]=s.humidity;o["lowBattery"]=s.lowBattery;o["rssi"]=s.rssi;o["age"]=s.hasReading?(millis()-s.updated)/1000:0;JsonArray h=o["history"].to<JsonArray>();for(const auto&p:samples)if(p.id==s.id){JsonObject q=h.add<JsonObject>();q["temperature"]=p.temperature;q["at"]=p.at;}}sendJson(d);});
+ web.on("/api/state",HTTP_GET,[]{JsonDocument d;d["wifi"]=WiFi.status()==WL_CONNECTED;d["rfm69Connected"]=rfm69Connected;JsonArray a=d["sensors"].to<JsonArray>();for(const auto&s:sensors){JsonObject o=a.add<JsonObject>();o["id"]=s.id;o["name"]=s.name;o["enabled"]=s.enabled;o["hasReading"]=s.hasReading;o["hasHumidity"]=s.hasHumidity;o["temperature"]=s.temperature;if(s.hasHumidity)o["humidity"]=s.humidity;o["lowBattery"]=s.lowBattery;o["rssi"]=s.rssi;o["age"]=s.hasReading?(millis()-s.updated)/1000:0;JsonArray h=o["history"].to<JsonArray>();for(const auto&p:samples)if(p.id==s.id){JsonObject q=h.add<JsonObject>();q["temperature"]=p.temperature;if(p.hasHumidity)q["humidity"]=p.humidity;q["at"]=p.at;}}sendJson(d);});
  web.on("/api/settings",HTTP_GET,[]{
    JsonDocument d;
    d["ssid"]=cfg.ssid;d["mqttHost"]=cfg.mqttHost;d["mqttPort"]=cfg.mqttPort;d["mqttUser"]=cfg.mqttUser;d["baseTopic"]=cfg.baseTopic;

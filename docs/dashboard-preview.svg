@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 660" role="img" aria-labelledby="title description">
+  <title id="title">Illustrative LaCrosse Gateway dashboard preview</title>
+  <desc id="description">Two sensor cards show current temperature and humidity with recent line charts.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#111827"/>
+      <stop offset="1" stop-color="#1f2937"/>
+    </linearGradient>
+  </defs>
+  <rect width="1120" height="660" rx="22" fill="url(#background)"/>
+  <text x="54" y="66" fill="#f9fafb" font-family="system-ui, sans-serif" font-size="30" font-weight="700">LaCrosse Gateway</text>
+  <circle cx="60" cy="101" r="5" fill="#34d399"/>
+  <text x="76" y="107" fill="#9ca3af" font-family="system-ui, sans-serif" font-size="15">Wi-Fi connected · RFM69CW connected</text>
+  <rect x="54" y="132" width="1012" height="474" rx="16" fill="#1f2937"/>
+  <text x="82" y="174" fill="#f9fafb" font-family="system-ui, sans-serif" font-size="21" font-weight="650">Live readings</text>
+
+  <g font-family="system-ui, sans-serif">
+    <rect x="78" y="196" width="468" height="380" rx="14" fill="#374151"/>
+    <text x="102" y="230" fill="#f9fafb" font-size="17" font-weight="650">Greenhouse</text>
+    <text x="520" y="230" fill="#9ca3af" font-size="13" text-anchor="end">ID 12</text>
+    <text x="102" y="270" fill="#f9fafb" font-size="28" font-weight="700">20.7 °C</text>
+    <text x="258" y="270" fill="#60a5fa" font-size="21" font-weight="650">43%</text>
+    <text x="102" y="296" fill="#9ca3af" font-size="12">RSSI -68 dBm · 12s ago</text>
+
+    <text x="102" y="328" fill="#d1d5db" font-size="13">Temperature</text>
+    <text x="520" y="328" fill="#d1d5db" font-size="13" text-anchor="end">20.7 °C</text>
+    <g stroke="#4b5563" stroke-dasharray="4 5">
+      <line x1="145" y1="344" x2="520" y2="344"/>
+      <line x1="145" y1="373" x2="520" y2="373"/>
+      <line x1="145" y1="402" x2="520" y2="402"/>
+    </g>
+    <g fill="#9ca3af" font-size="11" text-anchor="end">
+      <text x="134" y="348">22.0</text>
+      <text x="134" y="377">21.0</text>
+      <text x="134" y="406">20.0</text>
+    </g>
+    <path d="M150 390 L196 380 L242 385 L288 364 L334 373 L380 352 L426 359 L472 344 L516 353" fill="none" stroke="#34d399" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="516" cy="353" r="4" fill="#34d399"/>
+
+    <text x="102" y="440" fill="#d1d5db" font-size="13">Humidity</text>
+    <text x="520" y="440" fill="#d1d5db" font-size="13" text-anchor="end">43.0 %</text>
+    <g stroke="#4b5563" stroke-dasharray="4 5">
+      <line x1="145" y1="456" x2="520" y2="456"/>
+      <line x1="145" y1="485" x2="520" y2="485"/>
+      <line x1="145" y1="514" x2="520" y2="514"/>
+    </g>
+    <g fill="#9ca3af" font-size="11" text-anchor="end">
+      <text x="134" y="460">100</text>
+      <text x="134" y="489">50</text>
+      <text x="134" y="518">0</text>
+    </g>
+    <path d="M150 486 L196 483 L242 488 L288 479 L334 482 L380 476 L426 481 L472 478 L516 481" fill="none" stroke="#60a5fa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="516" cy="481" r="4" fill="#60a5fa"/>
+    <text x="145" y="546" fill="#9ca3af" font-size="11">-20m</text>
+    <text x="520" y="546" fill="#9ca3af" font-size="11" text-anchor="end">now</text>
+
+    <rect x="574" y="196" width="468" height="380" rx="14" fill="#374151"/>
+    <text x="598" y="230" fill="#f9fafb" font-size="17" font-weight="650">Living room</text>
+    <text x="1016" y="230" fill="#9ca3af" font-size="13" text-anchor="end">ID 27</text>
+    <text x="598" y="270" fill="#f9fafb" font-size="28" font-weight="700">19.9 °C</text>
+    <text x="754" y="270" fill="#60a5fa" font-size="21" font-weight="650">48%</text>
+    <text x="598" y="296" fill="#9ca3af" font-size="12">RSSI -72 dBm · 8s ago</text>
+
+    <text x="598" y="328" fill="#d1d5db" font-size="13">Temperature</text>
+    <text x="1016" y="328" fill="#d1d5db" font-size="13" text-anchor="end">19.9 °C</text>
+    <g stroke="#4b5563" stroke-dasharray="4 5">
+      <line x1="641" y1="344" x2="1016" y2="344"/>
+      <line x1="641" y1="373" x2="1016" y2="373"/>
+      <line x1="641" y1="402" x2="1016" y2="402"/>
+    </g>
+    <g fill="#9ca3af" font-size="11" text-anchor="end">
+      <text x="630" y="348">21.0</text>
+      <text x="630" y="377">20.0</text>
+      <text x="630" y="406">19.0</text>
+    </g>
+    <path d="M646 354 L692 363 L738 360 L784 377 L830 369 L876 386 L922 380 L968 396 L1012 389" fill="none" stroke="#34d399" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="1012" cy="389" r="4" fill="#34d399"/>
+
+    <text x="598" y="440" fill="#d1d5db" font-size="13">Humidity</text>
+    <text x="1016" y="440" fill="#d1d5db" font-size="13" text-anchor="end">48.0 %</text>
+    <g stroke="#4b5563" stroke-dasharray="4 5">
+      <line x1="641" y1="456" x2="1016" y2="456"/>
+      <line x1="641" y1="485" x2="1016" y2="485"/>
+      <line x1="641" y1="514" x2="1016" y2="514"/>
+    </g>
+    <g fill="#9ca3af" font-size="11" text-anchor="end">
+      <text x="630" y="460">100</text>
+      <text x="630" y="489">50</text>
+      <text x="630" y="518">0</text>
+    </g>
+    <path d="M646 483 L692 480 L738 484 L784 478 L830 480 L876 474 L922 478 L968 472 L1012 475" fill="none" stroke="#60a5fa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="1012" cy="475" r="4" fill="#60a5fa"/>
+    <text x="641" y="546" fill="#9ca3af" font-size="11">-20m</text>
+    <text x="1016" y="546" fill="#9ca3af" font-size="11" text-anchor="end">now</text>
+  </g>
+
+  <text x="560" y="638" fill="#9ca3af" font-family="system-ui, sans-serif" font-size="12" text-anchor="middle">Illustrative preview · chart history is held in gateway RAM</text>
+</svg>
