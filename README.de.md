@@ -61,6 +61,8 @@ Das Dashboard zeichnet die letzten Temperatur- und Luftfeuchtigkeitsmessungen au
 
 ![Beispielansicht der Temperatur- und Luftfeuchtigkeitsdiagramme im Dashboard](docs/dashboard-preview.svg)
 
+Um einen Sensor nach einem Batteriewechsel zu ersetzen, klicken Sie vor dem Einlegen der Batterie auf **Battery change** in der Sensorkarte. Das Gateway sucht 30 Sekunden nach Funk-IDs und zeigt neu erkannte IDs zur Bestätigung an. Nach der Bestätigung bleiben Sensorname, MQTT-Topic und Home-Assistant-Entitäts-IDs erhalten; die neue Funk-ID wird auch nach einem Neustart verwendet. Es kann jeweils nur ein Austausch gleichzeitig vorgemerkt sein.
+
 Das Dashboard zeigt an, ob beim Start ein RFM69CW erkannt wurde. Dazu wird geprüft, ob das SPI-Versionsregister den Wert `0x24` zurückgibt. Andernfalls überspringt die Firmware die Funkabfrage. Prüfen Sie Stromversorgung und SPI-Verkabelung, wenn das Modul nicht erkannt wird.
 
 Ändern Sie vor dem Einsatz das Passwort des Setup-Access-Points in `src/main.cpp`. Legen Sie unter **Network / MQTT** ein OTA-Passwort mit mindestens 8 Zeichen fest. Öffnen Sie anschließend **Firmware update** und laden Sie die passende Datei `.pio/build/<environment>/firmware.bin` oder das `*-ota.bin`-Release-Asset hoch. Für Firmware-Uploads ist dieses Passwort erforderlich; nach einem erfolgreichen Update startet das Gateway neu.
@@ -69,9 +71,9 @@ Der übrige Teil der lokalen Weboberfläche ist nicht authentifiziert. Die OTA-P
 
 ## MQTT und Home Assistant
 
-Der Zustand wird retained unter `<base-topic>/sensor/<name-slug>/state` veröffentlicht. Das Standard-Basistopic ist `lacrosse`. Das JSON enthält `id`, `temperature`, `humidity`, `battery_low`, `new_battery`, `rssi` und die Laufzeit `updated`.
+Der Zustand wird retained unter `<base-topic>/sensor/<name-slug>/state` veröffentlicht. Das Standard-Basistopic ist `lacrosse`. Das JSON enthält `id` (die aktuelle Funk-ID), `logical_id` (die stabile Sensoridentität), `temperature`, `humidity`, `battery_low`, `new_battery`, `rssi` und die Laufzeit `updated`.
 
-Bei jeder MQTT-Verbindung veröffentlicht das Gateway retained Home-Assistant-MQTT-Discovery-Konfigurationen für Temperatur, Luftfeuchtigkeit und niedrigen Batteriestand. Die Discovery-Topics liegen unter `homeassistant/` und verwenden stabile, sensor-ID-basierte eindeutige Kennungen. Die drei Entitäten eines Sensors werden als ein Gerät gruppiert. Zusätzlich veröffentlicht das Gateway den retained Online-/Offline-Status unter `<base-topic>/status`. Beim Deaktivieren eines Sensors werden dessen gespeicherte Discovery-Konfigurationen gelöscht, sodass Home Assistant die Entitäten entfernt. Beim Umbenennen wird die Discovery-Konfiguration aktualisiert; die eindeutigen Kennungen bleiben stabil.
+Bei jeder MQTT-Verbindung veröffentlicht das Gateway retained Home-Assistant-MQTT-Discovery-Konfigurationen für Temperatur, Luftfeuchtigkeit und niedrigen Batteriestand. Die Discovery-Topics liegen unter `homeassistant/` und verwenden stabile, logische sensor-ID-basierte Kennungen, die auch nach Bestätigung einer neuen Funk-ID erhalten bleiben. Die drei Entitäten eines Sensors werden als ein Gerät gruppiert. Zusätzlich veröffentlicht das Gateway den retained Online-/Offline-Status unter `<base-topic>/status`. Beim Deaktivieren eines Sensors werden dessen gespeicherte Discovery-Konfigurationen gelöscht, sodass Home Assistant die Entitäten entfernt. Beim Umbenennen wird die Discovery-Konfiguration aktualisiert; die eindeutigen Kennungen bleiben stabil.
 
 Die MQTT-Integration von Home Assistant muss mit demselben Broker verbunden sein. Das Discovery-Präfix ist standardmäßig `homeassistant`.
 

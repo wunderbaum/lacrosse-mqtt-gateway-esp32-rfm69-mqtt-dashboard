@@ -60,6 +60,8 @@ The dashboard plots recent temperature and humidity readings. The gateway keeps 
 
 ![Illustrative preview of the dashboard's temperature and humidity charts](docs/dashboard-preview.svg)
 
+To replace a sensor after changing its battery, click **Battery change** on that sensor's dashboard card before inserting the battery. The gateway listens for 30 seconds, then shows newly detected RF IDs for you to confirm. Confirming an ID keeps the sensor's name, MQTT topic, and Home Assistant entity IDs; the new RF ID is saved across reboots. Only one replacement can be pending at a time.
+
 The dashboard reports whether an RFM69CW was detected at startup. Detection checks that its SPI version register returns `0x24`; if not, the firmware skips radio polling. Check the module's power and SPI wiring if it is not detected.
 
 Change the setup AP password in `src/main.cpp` before deployment. Configure an OTA update password (at least 8 characters) in **Network / MQTT**, then open **Firmware update** and upload the matching `.pio/build/<environment>/firmware.bin` file or the release's `*-ota.bin` asset. Firmware uploads require this password and reboot the gateway after a successful update.
@@ -68,9 +70,9 @@ The rest of the local web interface has no authentication. OTA password authenti
 
 ## MQTT and Home Assistant
 
-State is retained at `<base-topic>/sensor/<name-slug>/state`, default base topic `lacrosse`. JSON state contains `id`, `temperature`, `humidity`, `battery_low`, `new_battery`, `rssi`, and uptime `updated`.
+State is retained at `<base-topic>/sensor/<name-slug>/state`, default base topic `lacrosse`. JSON state contains `id` (the current RF ID), `logical_id` (the stable sensor identity), `temperature`, `humidity`, `battery_low`, `new_battery`, `rssi`, and uptime `updated`.
 
-When MQTT connects or reconnects, the gateway publishes retained Home Assistant MQTT discovery for temperature, humidity, and low-battery entities. Discovery topics use stable sensor-ID based unique identifiers under `homeassistant/`; each sensor's three entities are grouped as one device. The gateway also publishes retained online/offline availability at `<base-topic>/status`. Disabling a sensor clears its retained discovery config topics so Home Assistant removes the entities. A rename updates the retained discovery config while retaining stable unique IDs.
+When MQTT connects or reconnects, the gateway publishes retained Home Assistant MQTT discovery for temperature, humidity, and low-battery entities. Discovery topics use stable logical sensor-ID based unique identifiers under `homeassistant/`; these remain unchanged when a replacement RF ID is confirmed. Each sensor's three entities are grouped as one device. The gateway also publishes retained online/offline availability at `<base-topic>/status`. Disabling a sensor clears its retained discovery config topics so Home Assistant removes the entities. A rename updates the retained discovery config while retaining stable unique IDs.
 
 Home Assistant's MQTT integration must connect to the same broker. Discovery prefix defaults to `homeassistant`.
 
