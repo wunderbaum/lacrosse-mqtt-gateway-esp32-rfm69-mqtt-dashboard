@@ -34,6 +34,7 @@ pio device monitor
 ```
 
 Die Weboberfläche ist in der Firmware eingebettet; ein Dateisystem muss nicht separat hochgeladen werden.
+Die Weboberfläche zeigt die in der Firmware eingebettete Release-Version an. Bei lokalen Builds wird `git describe --tags --always --dirty` verwendet, sodass bei nicht markierten oder geänderten Builds zusätzlich Commit und Änderungsstatus angezeigt werden.
 
 Für die Erstinstallation können Sie den [Online-USB-Flasher](https://wunderbaum.github.io/lacrosse-mqtt-gateway-esp32-rfm69-mqtt-dashboard/) oder PlatformIO verwenden. Der Online-Flasher benötigt einen Web-Serial-kompatiblen Browser, ein USB-Datenkabel und eine HTTPS-Verbindung.
 
@@ -55,7 +56,7 @@ GitHub Actions erstellt die Firmware für alle drei Boards, veröffentlicht das 
 1. Beim ersten Start erstellt das Gateway den WLAN-Access-Point `LaCrosse-Gateway` mit dem Passwort `lacrosse868`.
 2. Verbinden Sie sich damit und öffnen Sie `http://192.168.4.1/`.
 3. Tragen Sie unter **Network / MQTT** die WLAN- und MQTT-Broker-Daten ein. Passen Sie bei Bedarf auch die RFM69-GPIOs oder die Empfangsbandbreite an und speichern Sie die Einstellungen. Das Gateway startet anschließend neu.
-4. Öffnen Sie die LAN-IP-Adresse des Gateways und benennen Sie unter **Sensor setup** erkannte Sensoren und aktivieren oder deaktivieren Sie deren MQTT-Veröffentlichung.
+4. Öffnen Sie die LAN-IP-Adresse des Gateways und benennen Sie unter **Sensor setup** erkannte Sensoren und aktivieren oder deaktivieren Sie deren MQTT-Veröffentlichung. Um Nachbar- oder unbekannte Sensoren zu ignorieren, aktivieren Sie die Sensor-Whitelist und deaktivieren Sie bereits erkannte IDs, denen Sie nicht vertrauen. Die Whitelist ist standardmäßig ausgeschaltet; bekannte Sensoren sind zunächst zugelassen, unbekannte Funk-IDs werden bei aktiver Whitelist ignoriert. Der ausdrücklich gestartete Batteriewechsel kann weiterhin eine Ersatz-ID erfassen und bestätigen.
 
 Das Dashboard zeichnet die letzten Temperatur- und Luftfeuchtigkeitsmessungen auf. Das Gateway speichert bis zu 48 Messungen gemeinsam für alle Sensoren im RAM; nach einem Neustart ist dieser Verlauf gelöscht.
 

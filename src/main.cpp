@@ -12,6 +12,10 @@
 #include "LaCrosseDecoder.h"
 #include "favicon.h"
 
+#ifndef FIRMWARE_VERSION
+#define FIRMWARE_VERSION "unknown"
+#endif
+
 #ifndef RADIO_PIN_SCK
 #define RADIO_PIN_SCK 18
 #define RADIO_PIN_MISO 19
@@ -40,8 +44,9 @@ struct Settings {
   uint16_t rxBandwidthKhz=250;
   uint8_t pinSck=RADIO_PIN_SCK,pinMiso=RADIO_PIN_MISO,pinMosi=RADIO_PIN_MOSI;
   uint8_t pinNss=RADIO_PIN_NSS,pinReset=RADIO_PIN_RESET,pinDio0=RADIO_PIN_DIO0;
+  bool whitelistEnabled=false;
 } cfg;
-struct Sensor { uint16_t id=0; uint8_t radioId=0; String name; bool enabled=true,hasReading=false,hasHumidity=false,lowBattery=false,newBattery=false; float temperature=0; uint8_t humidity=0; int rssi=0; uint32_t updated=0; };
+struct Sensor { uint16_t id=0; uint8_t radioId=0; String name; bool enabled=true,allowed=true,hasReading=false,hasHumidity=false,lowBattery=false,newBattery=false; float temperature=0; uint8_t humidity=0; int rssi=0; uint32_t updated=0; };
 struct Sample { uint16_t id; uint8_t humidity; bool hasHumidity; float temperature; uint32_t at; };
 struct ReplacementCandidate { LaCrosseReading reading; int rssi=0; };
 struct BatteryChange { bool active=false,listening=false,candidateLimitReached=false; uint16_t sensorId=0; uint32_t expiresAt=0; std::vector<ReplacementCandidate> candidates; };
@@ -84,6 +89,7 @@ bool radioBegin(){
 String slug(String s){s.trim();s.toLowerCase();String out;bool dash=false;for(size_t i=0;i<s.length();++i){char c=s[i];if(isalnum((unsigned char)c)){out+=c;dash=false;}else if(!dash&&out.length()){out+='-';dash=true;}}while(out.endsWith("-"))out.remove(out.length()-1);return out.length()?out:"sensor";}
 Sensor *findSensor(uint16_t id){for(auto &s:sensors)if(s.id==id)return &s;return nullptr;}
 Sensor *findSensorByRadioId(uint8_t id){for(auto &s:sensors)if(s.radioId==id)return &s;return nullptr;}
+bool sensorPermitted(const Sensor&s){return !cfg.whitelistEnabled||s.allowed;}
 bool allocateSensorId(uint16_t &id){for(uint32_t candidate=0;candidate<=UINT16_MAX;++candidate)if(!findSensor(static_cast<uint16_t>(candidate))){id=static_cast<uint16_t>(candidate);return true;}return false;}
 void resetBatteryChange(){batteryChange.active=false;batteryChange.listening=false;batteryChange.candidateLimitReached=false;batteryChange.sensorId=0;batteryChange.expiresAt=0;batteryChange.candidates.clear();}
 void updateBatteryChangeWindow(){if(batteryChange.active&&batteryChange.listening&&static_cast<int32_t>(millis()-batteryChange.expiresAt)>=0){batteryChange.listening=false;Serial.printf("Battery-change listening window ended for sensor %u; %u candidate(s) found\n",static_cast<unsigned>(batteryChange.sensorId),static_cast<unsigned>(batteryChange.candidates.size()));}}
@@ -91,16 +97,16 @@ ReplacementCandidate *findReplacementCandidate(uint8_t radioId){for(auto &candid
 void observeReplacementCandidate(const LaCrosseReading&r,int rssi){ReplacementCandidate*c=findReplacementCandidate(r.id);if(!c){if(batteryChange.candidates.size()>=BATTERY_CHANGE_CANDIDATE_LIMIT){if(!batteryChange.candidateLimitReached)Serial.println("Battery-change candidate limit reached; additional IDs are not tracked.");batteryChange.candidateLimitReached=true;return;}batteryChange.candidates.push_back({});c=&batteryChange.candidates.back();}c->reading=r;c->rssi=rssi;}
 String stateTopic(const Sensor&s){return cfg.baseTopic+"/sensor/"+slug(s.name)+"/state";}
 String availabilityTopic(){return cfg.baseTopic+"/status";}
-void saveSettings(){prefs.begin("gateway",false);prefs.putString("ssid",cfg.ssid);prefs.putString("wifi",cfg.wifiPassword);prefs.putString("host",cfg.mqttHost);prefs.putString("user",cfg.mqttUser);prefs.putString("pass",cfg.mqttPassword);prefs.putString("ota",cfg.otaPassword);prefs.putString("topic",cfg.baseTopic);prefs.putUShort("port",cfg.mqttPort);prefs.putUShort("rxBw",cfg.rxBandwidthKhz);prefs.putUChar("pinSck",cfg.pinSck);prefs.putUChar("pinMiso",cfg.pinMiso);prefs.putUChar("pinMosi",cfg.pinMosi);prefs.putUChar("pinNss",cfg.pinNss);prefs.putUChar("pinReset",cfg.pinReset);prefs.putUChar("pinDio0",cfg.pinDio0);prefs.end();}
-void loadSettings(){prefs.begin("gateway",true);cfg.ssid=prefs.getString("ssid","");cfg.wifiPassword=prefs.getString("wifi","");cfg.mqttHost=prefs.getString("host","");cfg.mqttUser=prefs.getString("user","");cfg.mqttPassword=prefs.getString("pass","");cfg.otaPassword=prefs.getString("ota","");cfg.baseTopic=prefs.getString("topic","lacrosse");cfg.mqttPort=prefs.getUShort("port",1883);cfg.rxBandwidthKhz=prefs.getUShort("rxBw",250);cfg.pinSck=prefs.getUChar("pinSck",RADIO_PIN_SCK);cfg.pinMiso=prefs.getUChar("pinMiso",RADIO_PIN_MISO);cfg.pinMosi=prefs.getUChar("pinMosi",RADIO_PIN_MOSI);cfg.pinNss=prefs.getUChar("pinNss",RADIO_PIN_NSS);cfg.pinReset=prefs.getUChar("pinReset",RADIO_PIN_RESET);cfg.pinDio0=prefs.getUChar("pinDio0",RADIO_PIN_DIO0);prefs.end();if(!isValidRxBandwidth(cfg.rxBandwidthKhz)){Serial.printf("Invalid saved RX bandwidth %u kHz; using 250 kHz\n",cfg.rxBandwidthKhz);cfg.rxBandwidthKhz=250;}}
-void saveSensors(){JsonDocument d;JsonArray a=d.to<JsonArray>();for(const auto&s:sensors){JsonObject o=a.add<JsonObject>();o["id"]=s.id;o["radioId"]=s.radioId;o["name"]=s.name;o["enabled"]=s.enabled;}String text;serializeJson(d,text);prefs.begin("sensors",false);prefs.putString("list",text);prefs.end();}
-void loadSensors(){prefs.begin("sensors",true);String text=prefs.getString("list","[]");prefs.end();JsonDocument d;if(deserializeJson(d,text))return;for(JsonObject o:d.as<JsonArray>()){Sensor s;s.id=o["id"]|0;s.radioId=o["radioId"]|static_cast<uint8_t>(s.id);s.name=String((const char*)(o["name"]|""));s.enabled=o["enabled"]|true;sensors.push_back(s);}}
+void saveSettings(){prefs.begin("gateway",false);prefs.putString("ssid",cfg.ssid);prefs.putString("wifi",cfg.wifiPassword);prefs.putString("host",cfg.mqttHost);prefs.putString("user",cfg.mqttUser);prefs.putString("pass",cfg.mqttPassword);prefs.putString("ota",cfg.otaPassword);prefs.putString("topic",cfg.baseTopic);prefs.putUShort("port",cfg.mqttPort);prefs.putUShort("rxBw",cfg.rxBandwidthKhz);prefs.putUChar("pinSck",cfg.pinSck);prefs.putUChar("pinMiso",cfg.pinMiso);prefs.putUChar("pinMosi",cfg.pinMosi);prefs.putUChar("pinNss",cfg.pinNss);prefs.putUChar("pinReset",cfg.pinReset);prefs.putUChar("pinDio0",cfg.pinDio0);prefs.putBool("whitelist",cfg.whitelistEnabled);prefs.end();}
+void loadSettings(){prefs.begin("gateway",true);cfg.ssid=prefs.getString("ssid","");cfg.wifiPassword=prefs.getString("wifi","");cfg.mqttHost=prefs.getString("host","");cfg.mqttUser=prefs.getString("user","");cfg.mqttPassword=prefs.getString("pass","");cfg.otaPassword=prefs.getString("ota","");cfg.baseTopic=prefs.getString("topic","lacrosse");cfg.mqttPort=prefs.getUShort("port",1883);cfg.rxBandwidthKhz=prefs.getUShort("rxBw",250);cfg.pinSck=prefs.getUChar("pinSck",RADIO_PIN_SCK);cfg.pinMiso=prefs.getUChar("pinMiso",RADIO_PIN_MISO);cfg.pinMosi=prefs.getUChar("pinMosi",RADIO_PIN_MOSI);cfg.pinNss=prefs.getUChar("pinNss",RADIO_PIN_NSS);cfg.pinReset=prefs.getUChar("pinReset",RADIO_PIN_RESET);cfg.pinDio0=prefs.getUChar("pinDio0",RADIO_PIN_DIO0);cfg.whitelistEnabled=prefs.getBool("whitelist",false);prefs.end();if(!isValidRxBandwidth(cfg.rxBandwidthKhz)){Serial.printf("Invalid saved RX bandwidth %u kHz; using 250 kHz\n",cfg.rxBandwidthKhz);cfg.rxBandwidthKhz=250;}}
+void saveSensors(){JsonDocument d;JsonArray a=d.to<JsonArray>();for(const auto&s:sensors){JsonObject o=a.add<JsonObject>();o["id"]=s.id;o["radioId"]=s.radioId;o["name"]=s.name;o["enabled"]=s.enabled;o["allowed"]=s.allowed;}String text;serializeJson(d,text);prefs.begin("sensors",false);prefs.putString("list",text);prefs.end();}
+void loadSensors(){prefs.begin("sensors",true);String text=prefs.getString("list","[]");prefs.end();JsonDocument d;if(deserializeJson(d,text))return;for(JsonObject o:d.as<JsonArray>()){Sensor s;s.id=o["id"]|0;s.radioId=o["radioId"]|static_cast<uint8_t>(s.id);s.name=String((const char*)(o["name"]|""));s.enabled=o["enabled"]|true;s.allowed=o["allowed"]|true;sensors.push_back(s);}}
 String discoveryTopic(uint16_t id,const char *entity){return String("homeassistant/")+(strcmp(entity,"battery")==0?"binary_sensor":"sensor")+"/lacrosse_"+String(id)+"_"+entity+"/config";}
 void publishDiscovery(const Sensor&s,const char *entity){
   if(!mqtt.connected())return;
   String topic=discoveryTopic(s.id,entity);
   if(strcmp(entity,"humidity")==0&&!s.hasHumidity){mqtt.publish(topic.c_str(),"",true);return;}
-  if(!s.enabled){mqtt.publish(topic.c_str(),"",true);return;}
+  if(!s.enabled||!sensorPermitted(s)){mqtt.publish(topic.c_str(),"",true);return;}
   JsonDocument d;String friendly=s.name+" "+String(entity);d["name"]=friendly;d["unique_id"]="lacrosse_"+String(s.id)+"_"+entity;d["state_topic"]=stateTopic(s);d["availability_topic"]=availabilityTopic();d["payload_available"]="online";d["payload_not_available"]="offline";d["json_attributes_topic"]=stateTopic(s);
   if(strcmp(entity,"temperature")==0){d["value_template"]="{{ value_json.temperature }}";d["unit_of_measurement"]="°C";d["device_class"]="temperature";d["state_class"]="measurement";}
   else if(strcmp(entity,"humidity")==0){d["value_template"]="{{ value_json.humidity }}";d["unit_of_measurement"]="%";d["device_class"]="humidity";d["state_class"]="measurement";}
@@ -109,22 +115,24 @@ void publishDiscovery(const Sensor&s,const char *entity){
   String payload;serializeJson(d,payload);if(!mqtt.publish(topic.c_str(),payload.c_str(),true))Serial.printf("Discovery publish failed: %s\n",topic.c_str());
 }
 void announceSensor(const Sensor&s){publishDiscovery(s,"temperature");publishDiscovery(s,"humidity");publishDiscovery(s,"battery");}
-void publishReading(const Sensor&s){if(!mqtt.connected()||!s.enabled||!s.hasReading)return;JsonDocument d;d["id"]=s.radioId;d["logical_id"]=s.id;d["temperature"]=s.temperature;d["has_humidity"]=s.hasHumidity;if(s.hasHumidity)d["humidity"]=s.humidity;d["battery_low"]=s.lowBattery;d["new_battery"]=s.newBattery;d["rssi"]=s.rssi;d["updated"]=s.updated;String payload;serializeJson(d,payload);String topic=stateTopic(s);mqtt.publish(topic.c_str(),payload.c_str(),true);}
+void clearSensorMqtt(const Sensor&s){if(!mqtt.connected())return;String topic=stateTopic(s);mqtt.publish(topic.c_str(),"",true);announceSensor(s);}
+void publishReading(const Sensor&s){if(!mqtt.connected()||!s.enabled||!sensorPermitted(s)||!s.hasReading)return;JsonDocument d;d["id"]=s.radioId;d["logical_id"]=s.id;d["temperature"]=s.temperature;d["has_humidity"]=s.hasHumidity;if(s.hasHumidity)d["humidity"]=s.humidity;d["battery_low"]=s.lowBattery;d["new_battery"]=s.newBattery;d["rssi"]=s.rssi;d["updated"]=s.updated;String payload;serializeJson(d,payload);String topic=stateTopic(s);mqtt.publish(topic.c_str(),payload.c_str(),true);}
 void applyReading(Sensor&s,const LaCrosseReading&r,int rssi){bool announce=!s.hasReading||s.hasHumidity!=r.hasHumidity;s.temperature=r.temperature;s.humidity=r.humidity;s.hasHumidity=r.hasHumidity;s.lowBattery=r.lowBattery;s.newBattery=r.newBattery;s.rssi=rssi;s.updated=millis();s.hasReading=true;if(announce&&mqtt.connected())announceSensor(s);samples.push_back({s.id,s.humidity,s.hasHumidity,s.temperature,s.updated});if(samples.size()>HISTORY_LIMIT)samples.erase(samples.begin());publishReading(s);}
 void updateSensor(const LaCrosseReading&r){
   int rssi=-(int(readReg(0x24))/2);
-  if(Sensor*s=findSensorByRadioId(r.id)){applyReading(*s,r,rssi);return;}
+  if(Sensor*s=findSensorByRadioId(r.id)){if(!sensorPermitted(*s)){Serial.printf("Ignored RF ID %u: excluded by sensor whitelist\n",r.id);return;}applyReading(*s,r,rssi);return;}
   updateBatteryChangeWindow();
   if(batteryChange.active){
     if(ReplacementCandidate*c=findReplacementCandidate(r.id)){c->reading=r;c->rssi=rssi;return;}
     if(batteryChange.listening){observeReplacementCandidate(r,rssi);return;}
   }
+  if(cfg.whitelistEnabled){Serial.printf("Ignored unknown RF ID %u: sensor whitelist is enabled\n",r.id);return;}
   uint16_t id;
   if(!allocateSensorId(id)){Serial.println("Sensor identity space exhausted; ignoring RF frame.");return;}
   Sensor fresh;fresh.id=id;fresh.radioId=r.id;fresh.name="Sensor "+String(r.id);sensors.push_back(fresh);Sensor*s=&sensors.back();saveSensors();Serial.printf("Discovered sensor RF ID %u (logical ID %u)\n",r.id,static_cast<unsigned>(s->id));applyReading(*s,r,rssi);
 }
 void radioPoll(){if(!rfm69Connected||!(readReg(0x28)&0x04))return;uint8_t bytes[RF_FRAME_SIZE];digitalWrite(cfg.pinNss,LOW);SPI.transfer(0x00);for(auto &b:bytes)b=SPI.transfer(0);digitalWrite(cfg.pinNss,HIGH);writeReg(0x28,0x10);writeReg(0x3d,0x04);LaCrosseReading r;if(decodeLaCrosseFrame(bytes,r)){if(r.hasHumidity)Serial.printf("Frame id=%u temp=%.1f humidity=%u\n",r.id,r.temperature,r.humidity);else Serial.printf("Frame id=%u temp=%.1f no humidity sensor\n",r.id,r.temperature);updateSensor(r);}else{Serial.print("Rejected RF bytes:");for(uint8_t b:bytes)Serial.printf(" %02X",b);Serial.println();}}
-void onMqttConnected(){mqtt.publish(availabilityTopic().c_str(),"online",true);for(const auto&s:sensors){announceSensor(s);publishReading(s);}Serial.println("MQTT connected; discovery announced.");}
+void onMqttConnected(){mqtt.publish(availabilityTopic().c_str(),"online",true);for(const auto&s:sensors){if(sensorPermitted(s)){announceSensor(s);publishReading(s);}else clearSensorMqtt(s);}Serial.println("MQTT connected; discovery announced.");}
 void mqttReconnect(){if(cfg.mqttHost.isEmpty()||mqtt.connected()||millis()-lastMqttTry<5000)return;lastMqttTry=millis();mqtt.setServer(cfg.mqttHost.c_str(),cfg.mqttPort);mqtt.setBufferSize(1024);String client="lacrosse-"+String((uint32_t)ESP.getEfuseMac(),HEX);String will=availabilityTopic();bool ok=cfg.mqttUser.isEmpty()?mqtt.connect(client.c_str(),will.c_str(),0,true,"offline"):mqtt.connect(client.c_str(),cfg.mqttUser.c_str(),cfg.mqttPassword.c_str(),will.c_str(),0,true,"offline");if(ok)onMqttConnected();else Serial.printf("MQTT connect failed, state=%d\n",mqtt.state());}
 
 const char PAGE[] PROGMEM=R"HTML(
@@ -166,6 +174,7 @@ button:disabled{opacity:.55;cursor:not-allowed}
 <body>
 <h1>LaCrosse Gateway</h1>
 <p id="status" class="muted">Connecting</p>
+<p id="softwareVersion" class="muted">Firmware version: unknown</p>
 <nav class="nav">
 <button onclick="showSection('dashboard')">Dashboard</button>
 <button onclick="showSection('setup')">Sensor setup</button>
@@ -175,8 +184,8 @@ button:disabled{opacity:.55;cursor:not-allowed}
 <section id="dashboard"><h2>Live readings</h2><div id="cards" class="cards"></div></section>
 <section id="setup" hidden>
 <h2>Sensors</h2>
-<p class="muted">Detected IDs appear automatically. Rename sensors or switch MQTT publishing on/off.</p>
-<table><thead><tr><th>RF ID</th><th>Name</th><th>MQTT</th><th>Last seen</th></tr></thead><tbody id="rows"></tbody></table>
+<p><label><input id="whitelistEnabled" type="checkbox" onchange="saveWhitelistMode()"> Enable sensor whitelist</label><br><span class="muted">When enabled, only allowed sensors are received and published. New RF IDs are ignored; sensors already known are allowed by default. You can uncheck neighbors below. Battery-change listening still permits an explicitly confirmed replacement ID.</span></p>
+<table><thead><tr><th>RF ID</th><th>Name</th><th>Allow on whitelist</th><th>MQTT</th><th>Last seen</th></tr></thead><tbody id="rows"></tbody></table>
 <p><button onclick="saveSensors()">Save sensor settings</button></p>
 </section>
 <section id="settings" hidden>
@@ -293,6 +302,11 @@ function updateSensorRows(sensors){
       nameInput.maxLength=40;
       nameInput.value=sensor.name;
       nameCell.appendChild(nameInput);
+      const allowedCell=row.insertCell();
+      const allowedInput=document.createElement('input');
+      allowedInput.type='checkbox';
+      allowedInput.checked=sensor.allowed;
+      allowedCell.appendChild(allowedInput);
       const enabledCell=row.insertCell();
       const enabledInput=document.createElement('input');
       enabledInput.type='checkbox';
@@ -302,7 +316,7 @@ function updateSensorRows(sensors){
       rows.appendChild(row);
     }
     row.cells[0].textContent=sensor.radioId;
-    row.cells[3].textContent=sensor.hasReading?sensor.age+'s ago':'Not received';
+    row.cells[4].textContent=sensor.hasReading?sensor.age+'s ago':'Not received';
   }
 }
 async function refresh(){
@@ -311,14 +325,29 @@ async function refresh(){
     if(!response.ok)throw new Error(`State request failed: ${response.status}`);
     const d=await response.json();
     data=d.sensors;
+    byId('whitelistEnabled').checked=d.whitelistEnabled;
+    byId('softwareVersion').textContent=`Firmware version: ${d.firmwareVersion}`;
     byId('status').textContent=(d.wifi?'Wi-Fi connected':'Setup AP')+' · '+(d.rfm69Connected?'RFM69CW connected':'RFM69CW not detected');
-    byId('cards').innerHTML=data.map(s=>`<article class="card"><div class="card-heading"><b>${esc(s.name)}</b><small>RF ID ${s.radioId}</small></div><div class="reading"><span class="reading-temp">${s.hasReading?Number(s.temperature).toFixed(1)+' °C':'Waiting'}</span><span class="reading-humidity">${s.hasReading?(s.hasHumidity?s.humidity+'%':'No humidity sensor'):'--'}</span></div><small>${s.lowBattery?'Low battery · ':''}${s.hasReading?'RSSI '+s.rssi+' dBm · ':''}${s.age}s ago</small>${chartsFor(s)}${batteryChangeControls(s,d.batteryChange)}</article>`).join('')||'No sensors received yet';
+    const visibleSensors=data.filter(s=>s.allowed);
+    byId('cards').innerHTML=visibleSensors.map(s=>`<article class="card"><div class="card-heading"><b>${esc(s.name)}</b><small>RF ID ${s.radioId}</small></div><div class="reading"><span class="reading-temp">${s.hasReading?Number(s.temperature).toFixed(1)+' °C':'Waiting'}</span><span class="reading-humidity">${s.hasReading?(s.hasHumidity?s.humidity+'%':'No humidity sensor'):'--'}</span></div><small>${s.lowBattery?'Low battery · ':''}${s.hasReading?'RSSI '+s.rssi+' dBm · ':''}${s.age}s ago</small>${chartsFor(s)}${batteryChangeControls(s,d.batteryChange)}</article>`).join('')||'No allowed sensors received yet';
     updateSensorRows(data);
   }catch(e){byId('status').textContent='Gateway unavailable';console.error(e)}
 }
 async function postJson(url,payload){
   const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   if(!response.ok)throw new Error(await response.text()||`Request failed: ${response.status}`);
+}
+async function saveWhitelistMode(){
+  const input=byId('whitelistEnabled');
+  const enabled=input.checked;
+  try{
+    await postJson('/api/whitelist',{enabled});
+    await refresh();
+  }catch(error){
+    input.checked=!enabled;
+    console.error('Could not update sensor whitelist',error);
+    alert(`Could not update sensor whitelist: ${error.message}`);
+  }
 }
 async function startBatteryChange(sensorId){
   try{
@@ -352,8 +381,9 @@ async function saveSensors(){
   for(const r of byId('rows').querySelectorAll('tr')){
     const name=r.querySelector('input[type=text]').value.trim();
     if(!name){alert('Sensor name cannot be empty');return}
-    const response=await fetch('/api/sensor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:Number(r.dataset.id),name,enabled:r.querySelector('[type=checkbox]').checked})});
-    if(!response.ok){alert('Save failed');return}
+    const checkboxes=r.querySelectorAll('input[type=checkbox]');
+    const response=await fetch('/api/sensor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:Number(r.dataset.id),name,allowed:checkboxes[0].checked,enabled:checkboxes[1].checked})});
+    if(!response.ok){alert(await response.text()||'Save failed');return}
   }
   refresh();
   alert('Saved');
@@ -464,11 +494,11 @@ void setupWeb(){
  web.on("/api/state",HTTP_GET,[]{
    updateBatteryChangeWindow();
    JsonDocument d;
-   d["wifi"]=WiFi.status()==WL_CONNECTED;d["rfm69Connected"]=rfm69Connected;
+   d["wifi"]=WiFi.status()==WL_CONNECTED;d["rfm69Connected"]=rfm69Connected;d["whitelistEnabled"]=cfg.whitelistEnabled;d["firmwareVersion"]=FIRMWARE_VERSION;
    JsonArray a=d["sensors"].to<JsonArray>();
    for(const auto&s:sensors){
      JsonObject o=a.add<JsonObject>();
-     o["id"]=s.id;o["radioId"]=s.radioId;o["name"]=s.name;o["enabled"]=s.enabled;o["hasReading"]=s.hasReading;o["hasHumidity"]=s.hasHumidity;o["temperature"]=s.temperature;
+     o["id"]=s.id;o["radioId"]=s.radioId;o["name"]=s.name;o["enabled"]=s.enabled;o["allowed"]=s.allowed;o["hasReading"]=s.hasReading;o["hasHumidity"]=s.hasHumidity;o["temperature"]=s.temperature;
      if(s.hasHumidity)o["humidity"]=s.humidity;
      o["lowBattery"]=s.lowBattery;o["rssi"]=s.rssi;o["age"]=s.hasReading?(millis()-s.updated)/1000:0;
      JsonArray h=o["history"].to<JsonArray>();
@@ -489,6 +519,14 @@ void setupWeb(){
      }
    }
    sendJson(d);
+ });
+ web.on("/api/whitelist",HTTP_POST,[]{
+   JsonDocument d;
+   if(deserializeJson(d,web.arg("plain"))){web.send(400,"text/plain","Invalid JSON");return;}
+   if(!d["enabled"].is<bool>()){web.send(400,"text/plain","Whitelist setting must be a boolean");return;}
+   cfg.whitelistEnabled=d["enabled"].as<bool>();saveSettings();
+   for(const auto&s:sensors){if(sensorPermitted(s)){announceSensor(s);publishReading(s);}else clearSensorMqtt(s);}
+   web.send(200,"text/plain",cfg.whitelistEnabled?"Sensor whitelist enabled":"Sensor whitelist disabled");
  });
  web.on("/api/settings",HTTP_GET,[]{
    JsonDocument d;
@@ -575,8 +613,9 @@ void setupWeb(){
    if(!s){web.send(404,"text/plain","Unknown sensor");return;}
    String name=d["name"]|"";name.trim();
    if(!name.length()){web.send(400,"text/plain","Name is required");return;}
-   s->name=name;s->enabled=d["enabled"]|false;saveSensors();
-   if(mqtt.connected()){announceSensor(*s);publishReading(*s);}
+   s->name=name;s->enabled=d["enabled"]|false;s->allowed=d["allowed"]|true;saveSensors();
+   if(!sensorPermitted(*s))clearSensorMqtt(*s);
+   else if(mqtt.connected()){announceSensor(*s);publishReading(*s);}
    web.send(200,"text/plain","Saved");
  });
  web.onNotFound([]{web.send(404,"text/plain","Not found");});web.begin();

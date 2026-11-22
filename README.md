@@ -34,6 +34,7 @@ pio device monitor
 ```
 
 The web UI is embedded in the firmware; no filesystem upload is required.
+The web interface shows the release tag/version embedded in the firmware. Local builds use `git describe --tags --always --dirty`, so untagged or modified builds include the commit and dirty status.
 For a first install, use the [online USB flasher](https://wunderbaum.github.io/lacrosse-mqtt-gateway-esp32-rfm69-mqtt-dashboard/) or upload with PlatformIO. The online flasher requires a Web Serial-compatible browser, a USB data cable, and an HTTPS connection.
 
 ## Releases and online flasher
@@ -54,7 +55,7 @@ GitHub Actions builds all three board targets, creates the release, and deploys 
 1. On first boot, the gateway creates Wi-Fi AP `LaCrosse-Gateway`, password `lacrosse868`.
 2. Join it and open `http://192.168.4.1/`.
 3. Set Wi-Fi and MQTT broker details and, if needed, adjust the RFM69 GPIO pins or receive bandwidth in **Network / MQTT**, then save and reboot.
-4. Open the gateway's LAN IP and use **Sensor setup** to name discovered IDs and enable or disable MQTT publishing.
+4. Open the gateway's LAN IP and use **Sensor setup** to name discovered IDs and enable or disable MQTT publishing. To reject neighboring or unknown sensors, enable the sensor whitelist and uncheck any already-discovered IDs you do not trust. The whitelist is off by default; known sensors start allowed, and unknown RF IDs are ignored while it is on. The explicit battery-change flow can still collect and confirm a replacement ID.
 
 The dashboard plots recent temperature and humidity readings. The gateway keeps up to 48 samples in RAM, shared across sensors; this history is cleared on reboot.
 
